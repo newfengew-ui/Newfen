@@ -1,9 +1,9 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const crypto = require('node:crypto');
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 
 async function computeSri(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   const buf = Buffer.from(await res.arrayBuffer());
   const hash = crypto.createHash('sha384').update(buf).digest('base64');
@@ -12,7 +12,10 @@ async function computeSri(url) {
 
 async function main() {
   const htmlPath = path.join(process.cwd(), 'index.html');
-  if (!fs.existsSync(htmlPath)) return;
+  if (!fs.existsSync(htmlPath)) {
+    console.log('[SRI] index.html not found, skipping');
+    return;
+  }
   let html = fs.readFileSync(htmlPath, 'utf8');
   const tagRe = /<(script|link)\b([^>]+?(?:src|href)="(https:\/\/cdn\.jsdelivr\.net\/[^"]+)"[^>]*)>/gi;
   const matches = [...html.matchAll(tagRe)];
@@ -48,4 +51,5 @@ async function main() {
 
 main().catch(err => {
   console.warn('[SRI] Non-fatal error:', err.message);
+  process.exit(0);
 });
