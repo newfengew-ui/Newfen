@@ -240,13 +240,57 @@ module.exports = async function handler(req, res) {
     'X-Fox-Quota-Limit': String(rl.quota.limit)
   });
 
+  // Strict white-label SSE re-packer: strips all upstream model/provider/id metadata before sending to browser
   const reader = upstream.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let sseBuf = '';
+
+  const forwardCleanLine = (rawLine) => {
+    const line = rawLine.trim();
+    if (!line || !line.startsWith('data:')) return;
+    const payload = line.slice(5).trim();
+    if (payload === '[DONE]') {
+      if (!res.writableEnded) res.write('data: [DONE]\n\n');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(payload);
+      if (parsed.error) {
+        if (!res.writableEnded) res.write('data: {"error":"UPSTREAM_ERROR"}\n\n');
+        return;
+      }
+      const ch = parsed.choices && parsed.choices[0];
+      if (!ch) return;
+      const d = ch.delta || {};
+      const cleanDelta = {};
+      if (typeof d.content === 'string' && d.content.length) cleanDelta.content = d.content;
+      const rsn = typeof d.reasoning === 'string' ? d.reasoning : (typeof d.reasoning_content === 'string' ? d.reasoning_content : '');
+      if (rsn.length) cleanDelta.reasoning = rsn;
+      const fin = ch.finish_reason || null;
+      if (!cleanDelta.content && !cleanDelta.reasoning && !fin) return;
+      const outObj = {
+        model: 'fox-ai',
+        choices: [{ delta: cleanDelta, finish_reason: fin }]
+      };
+      if (!res.writableEnded) res.write('data: ' + JSON.stringify(outObj) + '\n\n');
+    } catch {
+      // Ignore malformed/comment SSE keepalive lines
+    }
+  };
+
   try {
     while (true) {
       const { value, done } = await reader.read();
-      if (done) break;
+      if (done) {
+        sseBuf += decoder.decode();
+        if (sseBuf.trim()) forwardCleanLine(sseBuf);
+        break;
+      }
       if (res.writableEnded) break;
-      res.write(Buffer.from(value));
+      sseBuf += decoder.decode(value, { stream: true });
+      const lines = sseBuf.split('\n');
+      sseBuf = lines.pop() || '';
+      for (const rawLine of lines) forwardCleanLine(rawLine);
     }
   } catch {
     // Client aborted or upstream interrupted
