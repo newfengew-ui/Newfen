@@ -11,7 +11,7 @@
 <title>Fox AI</title>
 <!-- SRI: при деплое закрепите точные SHA-384 хеши командой: curl -s <URL> | openssl dgst -sha384 -binary | openssl base64 -A -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.2.7/dist/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -94,6 +94,233 @@
   --glass: rgba(245, 240, 230, 0.9);
   --shadow: 0 12px 32px rgba(28, 25, 23, 0.14);
 }
+
+[data-theme="graphite"] {
+  --bg: #121316; --surface: #1a1c21; --surface-2: #23262d; --surface-3: #2d313a;
+  --border: #2c3038; --border-strong: #414754; --text: #eef0f4; --text-muted: #a1a7b4; --text-dim: #737987;
+  --accent: #eef0f4; --accent-fg: #121316; --user-bg: #1e2128; --user-border: #323742;
+  --code-bg: #15171c; --code-header: #1d2027; --diff-add-bg: rgba(255,255,255,0.08); --diff-del-bg: rgba(255,255,255,0.03);
+  --overlay: rgba(0,0,0,0.62); --glass: rgba(18,19,22,0.88); --shadow: 0 12px 32px rgba(0,0,0,0.42);
+}
+[data-theme="terminal"] {
+  --bg: #050806; --surface: #0b110d; --surface-2: #121b15; --surface-3: #19261d;
+  --border: #1e3324; --border-strong: #2d4f37; --text: #d7f5de; --text-muted: #82b38f; --text-dim: #547a5e;
+  --accent: #34d399; --accent-fg: #041108; --user-bg: #0e1811; --user-border: #203927;
+  --code-bg: #080d09; --code-header: #0f1912; --diff-add-bg: rgba(52,211,153,0.14); --diff-del-bg: rgba(248,113,113,0.12);
+  --overlay: rgba(0,0,0,0.72); --glass: rgba(5,8,6,0.9); --shadow: 0 12px 32px rgba(0,0,0,0.55);
+}
+[data-theme="nightpaper"] {
+  --bg: #181512; --surface: #211d19; --surface-2: #2b2520; --surface-3: #362f28;
+  --border: #383029; --border-strong: #52463c; --text: #efe7dc; --text-muted: #b5a898; --text-dim: #857869;
+  --accent: #e7dccb; --accent-fg: #181512; --user-bg: #241f1a; --user-border: #3d342c;
+  --code-bg: #1b1714; --code-header: #26201b; --diff-add-bg: rgba(239,231,220,0.09); --diff-del-bg: rgba(239,231,220,0.03);
+  --overlay: rgba(12,10,8,0.68); --glass: rgba(24,21,18,0.9); --shadow: 0 12px 32px rgba(0,0,0,0.45);
+}
+[data-accent="fox"] { --accent: #f59e0b; --accent-fg: #111111; --accent-glow: rgba(245, 158, 11, 0.28); }
+[data-accent="ice"] { --accent: #38bdf8; --accent-fg: #08121a; --accent-glow: rgba(56, 189, 248, 0.28); }
+[data-accent="emerald"] { --accent: #10b981; --accent-fg: #051610; --accent-glow: rgba(16, 185, 129, 0.28); }
+[data-accent="mono"], :root { --accent-glow: rgba(255, 255, 255, 0.16); }
+[data-theme="light"][data-accent="mono"], [data-theme="paper"][data-accent="mono"] { --accent-glow: rgba(0, 0, 0, 0.12); }
+
+/* 1. Ambient Glow on Composer during Streaming */
+@keyframes foxAmbientPulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--border-strong), 0 0 18px -2px var(--accent-glow); }
+  50% { box-shadow: 0 0 0 1px var(--accent), 0 0 32px 2px var(--accent-glow); }
+}
+body.is-streaming .composer-box {
+  animation: foxAmbientPulse 2.1s ease-in-out infinite;
+  border-color: var(--border-strong);
+}
+
+/* 3. Smooth token fade-in & sheet swipe hint */
+@keyframes foxSoftAppear { from { opacity: 0.45; } to { opacity: 1; } }
+.stream-fade { animation: foxSoftAppear 0.18s ease-out; }
+.sheet.sheet-dragging { transition: none !important; }
+
+/* 4. Chat Minimap / Timeline Scrubber */
+.chat-minimap {
+  position: fixed; right: 4px; top: 50%; transform: translateY(-50%);
+  z-index: 25; display: none; flex-direction: column; align-items: center; gap: 5px;
+  padding: 8px 4px; border-radius: 99px; background: var(--glass);
+  border: 1px solid var(--border); backdrop-filter: blur(10px);
+  max-height: 52dvh; overflow-y: auto; scrollbar-width: none;
+}
+.chat-minimap::-webkit-scrollbar { display: none; }
+.chat-minimap.show { display: flex; }
+.mm-dot {
+  width: 7px; height: 7px; border-radius: 50%; border: none; padding: 0;
+  background: var(--border-strong); cursor: pointer; transition: transform 0.15s, background 0.15s;
+}
+.mm-dot.user { background: var(--text-muted); width: 8px; height: 8px; }
+.mm-dot.code { background: var(--accent); width: 9px; height: 4px; border-radius: 3px; }
+.mm-dot.bm { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.mm-dot:active, .mm-dot:hover { transform: scale(1.45); background: var(--accent); }
+
+/* 5. Fullscreen Viz/SVG Zoom Modal */
+.viz-zoom-stage {
+  flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); touch-action: none; cursor: grab;
+}
+.viz-zoom-stage:active { cursor: grabbing; }
+.viz-zoom-inner { transform-origin: center center; transition: transform 0.08s linear; max-width: 92%; max-height: 82dvh; }
+.viz-zoom-inner svg { max-width: 90vw; max-height: 74dvh; width: auto; height: auto; display: block; }
+
+/* 6. Interactive Calculator Widget (```calc) */
+.calc-card {
+  margin: 10px 0; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); overflow: hidden;
+}
+.calc-head {
+  padding: 10px 13px; border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+}
+.calc-body { padding: 12px 13px; display: flex; flex-direction: column; gap: 11px; }
+.calc-row { display: flex; flex-direction: column; gap: 5px; }
+.calc-row-top { display: flex; justify-content: space-between; font-size: 12.5px; }
+.calc-row-label { color: var(--text-muted); }
+.calc-row-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.calc-slider { width: 100%; accent-color: var(--accent); cursor: pointer; height: 5px; }
+.calc-results {
+  margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;
+}
+.calc-res-tile {
+  padding: 9px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg);
+}
+.calc-res-label { font-size: 11px; color: var(--text-muted); }
+.calc-res-val { font-size: 16px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; color: var(--text); }
+
+/* 7. Visual Code Diff (```diff) */
+.diff-card {
+  margin: 10px 0; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--code-bg); overflow: hidden; font-family: var(--font-mono); font-size: 12.5px;
+}
+.diff-head {
+  padding: 8px 12px; background: var(--code-header); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+}
+.diff-lines { overflow-x: auto; padding: 6px 0; }
+.diff-line { display: flex; padding: 1.5px 12px; white-space: pre; line-height: 1.55; }
+.diff-line.add { background: rgba(16, 185, 129, 0.14); color: #6ee7b7; }
+.diff-line.del { background: rgba(239, 68, 68, 0.14); color: #fca5a5; }
+.diff-line.hunk { background: var(--surface-2); color: var(--text-muted); font-weight: 600; }
+[data-theme="light"] .diff-line.add, [data-theme="paper"] .diff-line.add { color: #047857; background: rgba(16, 185, 129, 0.12); }
+[data-theme="light"] .diff-line.del, [data-theme="paper"] .diff-line.del { color: #b91c1c; background: rgba(239, 68, 68, 0.11); }
+
+/* 8. Interactive Stepper Guide (```stepper) */
+.stepper-card {
+  margin: 10px 0; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); overflow: hidden;
+}
+.stepper-head {
+  padding: 10px 13px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700;
+}
+.stepper-bar { height: 3px; background: var(--surface-3); width: 100%; }
+.stepper-bar-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+.stepper-body { padding: 14px 13px; }
+.stepper-step-num { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stepper-step-title { font-size: 15px; font-weight: 700; margin: 4px 0 6px; }
+.stepper-step-desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; }
+.stepper-foot {
+  padding: 9px 13px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+
+/* 9. Voice Input Button & Animated Wave */
+.composer-mic-btn {
+  width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent;
+  color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; cursor: pointer; transition: color 0.15s, background 0.15s;
+}
+.composer-mic-btn:active { background: var(--surface-2); }
+.composer-mic-btn.recording { background: var(--accent); color: var(--accent-fg); }
+.voice-wave { display: none; align-items: center; gap: 2.5px; height: 16px; }
+.composer-mic-btn.recording .mic-svg { display: none; }
+.composer-mic-btn.recording .voice-wave { display: inline-flex; }
+.voice-wave i {
+  display: block; width: 2.5px; height: 6px; border-radius: 2px; background: currentColor;
+  animation: foxWave 0.7s ease-in-out infinite;
+}
+.voice-wave i:nth-child(2) { animation-delay: 0.14s; }
+.voice-wave i:nth-child(3) { animation-delay: 0.28s; }
+.voice-wave i:nth-child(4) { animation-delay: 0.42s; }
+@keyframes foxWave { 0%, 100% { height: 5px; } 50% { height: 15px; } }
+
+/* 11. Floating TOC Pill */
+.toc-pill-wrap {
+  position: fixed; top: calc(58px + var(--safe-top)); left: 50%; transform: translateX(-50%);
+  z-index: 26; display: none; flex-direction: column; align-items: center; max-width: 86vw;
+}
+.toc-pill-wrap.show { display: flex; }
+.toc-pill-btn {
+  height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-strong);
+  background: var(--glass); backdrop-filter: blur(12px); color: var(--text);
+  font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: var(--shadow); max-width: 80vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toc-dropdown {
+  margin-top: 6px; min-width: 220px; max-width: 82vw; max-height: 44dvh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px;
+  padding: 6px; box-shadow: var(--shadow); display: none; flex-direction: column; gap: 2px;
+}
+.toc-dropdown.open { display: flex; }
+.toc-item {
+  width: 100%; text-align: left; padding: 8px 10px; border-radius: 9px; border: none;
+  background: transparent; color: var(--text); font-size: 12.5px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toc-item:active, .toc-item:hover { background: var(--surface-2); }
+
+/* 12. Zen / Focus Mode */
+body.zen-mode .topbar { transform: translateY(-110%); opacity: 0; pointer-events: none; position: fixed; top: 0; left: 0; right: 0; }
+body.zen-mode .chat-minimap, body.zen-mode .toc-pill-wrap { opacity: 0; pointer-events: none; }
+.zen-exit-btn {
+  position: fixed; top: calc(10px + var(--safe-top)); right: 12px; z-index: 45;
+  height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-strong);
+  background: var(--glass); backdrop-filter: blur(10px); color: var(--text);
+  font-size: 12px; font-weight: 600; display: none; align-items: center; gap: 6px; cursor: pointer;
+}
+body.zen-mode .zen-exit-btn { display: inline-flex; }
+
+/* 15. Activity Dashboard Heatmap in Settings */
+.act-dash {
+  margin-bottom: 12px; padding: 12px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.act-dash-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.act-dash-title { font-size: 13px; font-weight: 700; }
+.act-dash-streak { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+.act-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.act-stat { padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); text-align: center; }
+.act-stat-v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.act-stat-l { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+.act-heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.act-cell { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
+.act-cell.l1 { background: var(--border-strong); }
+.act-cell.l2 { background: var(--text-muted); }
+.act-cell.l3 { background: var(--accent); border-color: var(--accent); }
+
+/* 16. Mini-IDE Tablet Width */
+.ide-iframe.tablet-frame { width: 768px !important; max-width: 100%; border-radius: 14px; border: 1px solid var(--border-strong); }
+
+/* 2. Fox Context Mood Pill */
+.fox-mood-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); font-size: 11.5px; font-weight: 500;
+}
+.fox-mood-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* Accent Swatch Buttons */
+.accent-swatch-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
+.accent-btn {
+  height: 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+}
+.accent-btn.active { border-color: var(--accent); background: var(--surface-2); }
+.accent-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
 [data-font="sm"] { --font-size-base: 13.5px; }
 [data-font="md"] { --font-size-base: 15px; }
 [data-font="lg"] { --font-size-base: 17px; }
@@ -1439,6 +1666,10 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
         <textarea id="composerInput" class="composer-textarea" rows="1" placeholder="Спросите Fox AI…" aria-label="Поле ввода сообщения"></textarea>
+        <button type="button" class="composer-mic-btn" id="btnVoiceInput" aria-label="Голосовой ввод" title="Голосовой ввод">
+          <svg class="mic-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <span class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        </button>
         <button class="send-btn" id="btnSend" aria-label="Отправить сообщение">
           <svg id="sendIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
         </button>
@@ -1551,6 +1782,19 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         <button type="button" class="ya-logout-btn" id="btnYandexLogout">Выйти</button>
       </div>
 
+      <div class="act-dash" id="activityDash">
+        <div class="act-dash-head">
+          <span class="act-dash-title">Активность Fox AI</span>
+          <span class="act-dash-streak" id="actStreakLabel">Серия: 0 дн.</span>
+        </div>
+        <div class="act-stats-row">
+          <div class="act-stat"><div class="act-stat-v" id="actStatChats">0</div><div class="act-stat-l">Чатов</div></div>
+          <div class="act-stat"><div class="act-stat-v" id="actStatMsgs">0</div><div class="act-stat-l">Сообщений</div></div>
+          <div class="act-stat"><div class="act-stat-v" id="actStatDeck">0</div><div class="act-stat-l">Карточек SM-2</div></div>
+        </div>
+        <div class="act-heatmap" id="actHeatmap" aria-label="Тепловая карта активности за 49 дней"></div>
+      </div>
+
       <div class="settings-root-list" id="settingsRootList">
         <button class="settings-cat-row" data-scat="general" data-scat-title="Общие">
           <span class="settings-cat-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
@@ -1601,10 +1845,22 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         <div class="settings-card">
           <div class="settings-row col" data-skeys="тема oled светлая бумага сепия внешний вид">
             <div class="settings-row-label">Тема оформления</div>
-            <div class="seg-control" id="setThemeSeg" style="width:100%;justify-content:space-between;">
-              <button class="seg-btn" data-set-theme="dark" style="flex:1;">OLED</button>
-              <button class="seg-btn" data-set-theme="light" style="flex:1;">Светлая</button>
-              <button class="seg-btn" data-set-theme="paper" style="flex:1;">Бумага</button>
+            <div class="seg-control" id="setThemeSeg" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+              <button class="seg-btn" data-set-theme="dark">OLED</button>
+              <button class="seg-btn" data-set-theme="graphite">Графит</button>
+              <button class="seg-btn" data-set-theme="terminal">Терминал</button>
+              <button class="seg-btn" data-set-theme="nightpaper">Ночь-бум.</button>
+              <button class="seg-btn" data-set-theme="light">Светлая</button>
+              <button class="seg-btn" data-set-theme="paper">Бумага</button>
+            </div>
+          </div>
+          <div class="settings-row col" data-skeys="акцент цвет моно янтарь синий изумруд">
+            <div class="settings-row-label">Акцентный цвет</div>
+            <div class="accent-swatch-row" id="setAccentSeg">
+              <button class="accent-btn" data-set-accent="mono"><span class="accent-dot" style="background:var(--text);"></span>Моно</button>
+              <button class="accent-btn" data-set-accent="fox"><span class="accent-dot" style="background:#f59e0b;"></span>Лисий</button>
+              <button class="accent-btn" data-set-accent="ice"><span class="accent-dot" style="background:#38bdf8;"></span>Лёд</button>
+              <button class="accent-btn" data-set-accent="emerald"><span class="accent-dot" style="background:#10b981;"></span>Изумруд</button>
             </div>
           </div>
           <div class="settings-row" data-skeys="размер текста шрифт s m l">
@@ -2034,6 +2290,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   <div class="ide-subbar">
     <div style="display:flex;gap:5px;align-items:center;" id="idePreviewControls">
       <button class="code-btn primary" id="btnIdeMobile">Телефон</button>
+      <button class="code-btn" id="btnIdeTablet">Планшет</button>
       <button class="code-btn" id="btnIdeDesktop">Десктоп</button>
       <button class="code-btn" id="btnIdeBgToggle">Фон: Светлый</button>
       <button class="code-btn" id="btnIdeReload">Перезапуск</button>
@@ -2127,22 +2384,8 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 (function() {
   'use strict';
 
-  /* ==================== INTERNAL ROUTING CONFIG (HIDDEN WHITE-LABEL) ==================== */
-  const _P = {
-    a: {
-      u: 'https://openrouter.ai/api/v1/chat/completions',
-      k: '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',
-      mFast: 'baidu/ernie-5.5-flash-preview:free',
-      mVision: 'nvidia/nemotron-3.5-super-vl:free',
-      mCode: 'nvidia/nemotron-3-ultra-550b-a55b:free'
-    },
-    b: {
-      u: 'https://api.groq.com/openai/v1/chat/completions',
-      k: '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',
-      mFast: 'qwen/qwen3.8-27b',
-      mCode: 'openai/gpt-oss-120b'
-    }
-  };
+  /* ==================== SECURE SERVER-SIDE PROXY CONFIG (v7.0) ==================== */
+  const FOX_API_ENDPOINT = '/api/chat';
 
   /* ==================== CUSTOM GEOMETRIC SVG ICONS ==================== */
   const ICONS = {
@@ -2172,6 +2415,12 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   const MAX_PDF_BYTES = 15 * 1024 * 1024;
   const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
   const MAX_DOC_CHARS = 18000;
+  const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+  const MAX_TEXT_BYTES = 5 * 1024 * 1024;
+  const MAX_ZIP_UNCOMPRESSED_BYTES = 25 * 1024 * 1024;
+  const MAX_ATTACHMENTS_PER_MSG = 8;
+  const MAX_BACKUP_CHATS = 500;
+  const MAX_BACKUP_MSGS_PER_CHAT = 1500;
   const MSG_WINDOW_STEP = 40;
 
   const FOLDERS = ['Все', 'Код', 'Учёба', 'Идеи', 'Работа', 'Избранное', 'Архив'];
@@ -2195,19 +2444,10 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     font: 'md', fontFamily: 'sans', radius: 'normal', density: 'normal',
     userName: 'Пользователь', tone: 'balanced', customPrompt: '',
     showFollowups: true, showThink: true, codeLines: true, videoFrames: 4,
-    autoMemory: true, haptic: true, autoTts: false, ttsRate: 1, enterToSend: false, foxCompanion: true
+    autoMemory: true, haptic: true, autoTts: false, ttsRate: 1, enterToSend: false, foxCompanion: true, accent: 'mono'
   };
 
-  const SYSTEM_PROMPT_BASE = [
-    'Ты — Fox AI, лаконичный, умный и дружелюбный персональный ИИ-ассистент.',
-    'Строгие правила идентичности: ты всегда представляешься исключительно как Fox AI. Никогда не упоминай сторонние платформы, API, провайдеров, маршрутизацию или внутренние названия моделей.',
-    'Отвечай сразу по делу и естественно. На простые приветствия отвечай коротко без лишних виджетов. Используй визуализации только когда они действительно полезны для задачи.',
-    'Доступные форматы визуализаций Fox AI:',
-    '1) Графики — ```chart с JSON: {"type":"bar","title":"Заголовок","labels":["А","Б"],"values":[10,25],"unit":"%"} или мультисерийный {"type":"bar","title":"Сравнение","labels":["Q1","Q2"],"series":[{"name":"План","values":[10,20]},{"name":"Факт","values":[12,24]}]} (типы: bar, hbar, line, area, donut, radar).',
-    '2) Карточки — ```cards с JSON {"title":"Карточки","cards":[{"front":"Вопрос","back":"Ответ"}]}; Сравнение — ```compare с JSON {"title":"Сравнение","leftTitle":"Плюсы","rightTitle":"Минусы","left":["..."],"right":["..."]}.',
-    '3) KPI — ```kpi с JSON [{"label":"Метрика","value":"128%","delta":"↑ +14%"}]; Таймлайн — ```timeline с JSON {"title":"План","items":[{"date":"Этап 1","title":"Старт","desc":"..."}]}; Мини-квиз — ```quiz.',
-    '4) Веб-виджеты — ```html / ```css / ```js; схемы — ```mermaid или ```svg; чек-листы `- [ ]`, таблицы и формулы ($...$, $$...$$).'
-  ].join('\n');
+  // Системный промпт и правила Fox AI хранятся и применяются строго на сервере (/api/chat).
 
   /* ==================== SECURITY: SAFE IDs & DOMPURIFY + FALLBACK ==================== */
   function escapeHtml(str) {
@@ -2222,40 +2462,152 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     if (/^(https?:|mailto:)/i.test(s)) return s;
     return '#';
   }
+  function sanitizeImageDataUrl(url) {
+    const s = String(url || '').trim();
+    if (!s || s.length > 3_500_000) return '';
+    if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(s)) return s;
+    return '';
+  }
+  function sanitizeAttachment(raw) {
+    if (!raw || typeof raw !== 'object' || typeof raw.name !== 'string') return null;
+    const name = raw.name.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 140) || 'file';
+    const rawKind = String(raw.kind || raw.type || 'text').toLowerCase();
+    const kind = (rawKind === 'image' || rawKind === 'pdf' || rawKind === 'text') ? rawKind : 'text';
+    const metaNote = typeof raw.metaNote === 'string' ? raw.metaNote.slice(0, 180) : '';
+    if (kind === 'image') {
+      const safeDataUrl = sanitizeImageDataUrl(raw.dataUrl);
+      if (!safeDataUrl) return null;
+      return { kind: 'image', name, dataUrl: safeDataUrl, metaNote };
+    }
+    const content = typeof raw.content === 'string'
+      ? raw.content.slice(0, MAX_DOC_CHARS)
+      : (typeof raw.extractedText === 'string' ? raw.extractedText.slice(0, MAX_DOC_CHARS) : '');
+    return { kind, name, content, metaNote };
+  }
+  function sanitizeSettingsObj(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return Object.assign({}, DEFAULT_SETTINGS);
+    const out = Object.assign({}, DEFAULT_SETTINGS);
+    if (['sm', 'md', 'lg'].includes(raw.font)) out.font = raw.font;
+    if (['sans', 'serif', 'mono'].includes(raw.fontFamily)) out.fontFamily = raw.fontFamily;
+    if (['sharp', 'normal', 'soft'].includes(raw.radius)) out.radius = raw.radius;
+    if (['compact', 'normal', 'comfortable', 'spacious'].includes(raw.density)) out.density = raw.density;
+    if (typeof raw.userName === 'string') out.userName = raw.userName.replace(/[\u0000-\u001f]/g, '').slice(0, 60);
+    if (['balanced', 'concise', 'detailed', 'coder', 'tech'].includes(raw.tone)) out.tone = raw.tone;
+    if (['mono', 'fox', 'ice', 'emerald'].includes(raw.accent)) out.accent = raw.accent;
+    if (typeof raw.customPrompt === 'string') out.customPrompt = raw.customPrompt.slice(0, 3000);
+    ['showFollowups', 'showThink', 'codeLines', 'autoMemory', 'haptic', 'autoTts', 'enterToSend', 'foxCompanion'].forEach(k => {
+      if (typeof raw[k] === 'boolean') out[k] = raw[k];
+    });
+    if (Number.isFinite(Number(raw.videoFrames))) out.videoFrames = Math.max(2, Math.min(8, Math.round(Number(raw.videoFrames))));
+    if (Number.isFinite(Number(raw.ttsRate))) out.ttsRate = Math.max(0.75, Math.min(1.5, Number(raw.ttsRate)));
+    return out;
+  }
+  const _FALLBACK_DROP_SUBTREE = new Set(['script', 'style', 'iframe', 'object', 'embed', 'foreignobject', 'noscript', 'template', 'title', 'textarea', 'form', 'base', 'meta', 'link', 'math']);
+  const _FALLBACK_HTML_TAGS = new Set([
+    'p', 'br', 'div', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'mark', 'code', 'pre',
+    'blockquote', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'a', 'img', 'button', 'input', 'label',
+    'details', 'summary', 'sup', 'sub', 'kbd', 'small',
+    'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'tspan', 'defs', 'lineargradient', 'stop', 'desc'
+  ]);
+  const _FALLBACK_SVG_TAGS = new Set([
+    'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'tspan', 'defs', 'lineargradient', 'stop', 'desc'
+  ]);
+  const _FALLBACK_ALLOWED_ATTRS = new Set([
+    'class', 'title', 'alt', 'href', 'src', 'target', 'rel', 'colspan', 'rowspan',
+    'type', 'checked', 'disabled', 'aria-label', 'aria-hidden', 'role',
+    'width', 'height', 'viewbox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+    'stroke-dasharray', 'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry',
+    'points', 'transform', 'opacity', 'text-anchor', 'font-size', 'font-weight', 'offset', 'stop-color', 'stop-opacity',
+    'data-copy-code', 'data-dl-code', 'data-wrap-code', 'data-expand-code', 'data-fold-code',
+    'data-open-ide', 'data-toggle-art', 'data-chart-card', 'data-chart-type', 'data-chart-sort',
+    'data-dl-chart', 'data-dl-chart-png', 'data-viz-tip', 'data-dl-csv', 'data-sort-col',
+    'data-toggle-task', 'data-quiz', 'data-qitem', 'data-ans', 'data-qopt',
+    'data-fc', 'data-fc-flip', 'data-fc-nav', 'data-fc-mark', 'data-live-code-scroll', 'data-viz-zoom', 'data-calc-id', 'data-calc-var', 'data-calc-res', 'data-stepper-nav', 'data-stepper-done', 'data-calc-val', 'data-calc-out', 'data-stepper', 'data-st-role', 'min', 'max', 'step', 'value', 'data-viz-zoom', 'data-calc-id', 'data-calc-var', 'data-calc-res', 'data-stepper-nav', 'data-stepper-done', 'data-calc-val', 'data-calc-out', 'data-stepper', 'data-st-role', 'min', 'max', 'step', 'value'
+  ]);
+
+  function _strictFallbackSanitize(dirty, svgOnly) {
+    const allowedTags = svgOnly ? _FALLBACK_SVG_TAGS : _FALLBACK_HTML_TAGS;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(String(dirty || ''), 'text/html');
+    const outDoc = document.implementation.createHTMLDocument('');
+    const root = outDoc.createElement('div');
+
+    function cloneSafe(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return outDoc.createTextNode(node.nodeValue || '');
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return null;
+      const tag = node.tagName.toLowerCase();
+      if (_FALLBACK_DROP_SUBTREE.has(tag)) return null;
+      if (!allowedTags.has(tag)) {
+        const frag = outDoc.createDocumentFragment();
+        for (const ch of Array.from(node.childNodes)) {
+          const safeCh = cloneSafe(ch);
+          if (safeCh) frag.appendChild(safeCh);
+        }
+        return frag;
+      }
+      const isSvgTag = _FALLBACK_SVG_TAGS.has(tag);
+      const el = isSvgTag
+        ? outDoc.createElementNS('http://www.w3.org/2000/svg', tag)
+        : outDoc.createElement(tag);
+
+      for (const attr of Array.from(node.attributes)) {
+        const name = attr.name.toLowerCase();
+        const val = String(attr.value || '').trim();
+        if (name.startsWith('on') || name === 'style' || name === 'id' || name === 'name' || name === 'srcdoc' || name === 'srcset' || name === 'formaction' || name === 'xlink:href') continue;
+        if (!_FALLBACK_ALLOWED_ATTRS.has(name)) continue;
+        if (name === 'href') {
+          if (!/^(https?:|mailto:|#)/i.test(val)) continue;
+        }
+        if (name === 'src') {
+          if (tag !== 'img') continue;
+          if (!/^(https?:|data:image\/(png|jpeg|jpg|webp|gif);base64,)/i.test(val)) continue;
+        }
+        if (name === 'type' && tag === 'input' && !['checkbox', 'range'].includes(val.toLowerCase())) continue;
+        if (name === 'target') {
+          if (val !== '_blank') continue;
+          el.setAttribute('rel', 'noopener noreferrer');
+        }
+        el.setAttribute(attr.name === 'viewBox' ? 'viewBox' : name, val);
+      }
+
+      for (const ch of Array.from(node.childNodes)) {
+        const safeCh = cloneSafe(ch);
+        if (safeCh) el.appendChild(safeCh);
+      }
+      return el;
+    }
+
+    for (const ch of Array.from(doc.body.childNodes)) {
+      const safeCh = cloneSafe(ch);
+      if (safeCh) root.appendChild(safeCh);
+    }
+    return root.innerHTML;
+  }
+
   function sanitizeHtml(dirtyHtml) {
     if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
       return window.DOMPurify.sanitize(dirtyHtml, {
         USE_PROFILES: { html: true, svg: true },
-        FORBID_TAGS: ['script', 'style', 'object', 'embed', 'foreignObject', 'form', 'base', 'meta', 'link'],
-        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'srcdoc'],
-        ADD_ATTR: ['target', 'rel', 'data-copy-code', 'data-dl-code', 'data-wrap-code', 'data-expand-code', 'data-fold-code', 'data-open-ide', 'data-toggle-art', 'data-chart-card', 'data-chart-type', 'data-chart-sort', 'data-dl-chart', 'data-dl-chart-png', 'data-viz-tip', 'data-dl-csv', 'data-sort-col', 'data-toggle-task', 'data-quiz', 'data-qitem', 'data-ans', 'data-qopt', 'data-fc', 'data-fc-flip', 'data-fc-nav', 'data-fc-mark', 'data-live-code-scroll']
+        FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'foreignObject', 'form', 'base', 'meta', 'link', 'noscript', 'template'],
+        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'srcdoc', 'formaction'],
+        ADD_ATTR: ['target', 'rel', 'data-copy-code', 'data-dl-code', 'data-wrap-code', 'data-expand-code', 'data-fold-code', 'data-open-ide', 'data-toggle-art', 'data-chart-card', 'data-chart-type', 'data-chart-sort', 'data-dl-chart', 'data-dl-chart-png', 'data-viz-tip', 'data-dl-csv', 'data-sort-col', 'data-toggle-task', 'data-quiz', 'data-qitem', 'data-ans', 'data-qopt', 'data-fc', 'data-fc-flip', 'data-fc-nav', 'data-fc-mark', 'data-live-code-scroll', 'data-viz-zoom', 'data-calc-id', 'data-calc-var', 'data-calc-res', 'data-stepper-nav', 'data-stepper-done', 'data-calc-val', 'data-calc-out', 'data-stepper', 'data-st-role', 'min', 'max', 'step', 'value', 'data-viz-zoom', 'data-calc-id', 'data-calc-var', 'data-calc-res', 'data-stepper-nav', 'data-stepper-done', 'data-calc-val', 'data-calc-out', 'data-stepper', 'data-st-role', 'min', 'max', 'step', 'value']
       });
     }
-    // Strict built-in fallback sanitizer when offline/CDN unavailable
-    const tpl = document.createElement('template');
-    tpl.innerHTML = String(dirtyHtml || '');
-    const forbidden = tpl.content.querySelectorAll('script, style, iframe, object, embed, foreignObject, base, meta, link');
-    forbidden.forEach(n => n.remove());
-    tpl.content.querySelectorAll('*').forEach(el => {
-      for (const attr of Array.from(el.attributes)) {
-        const name = attr.name.toLowerCase(), val = attr.value.trim();
-        if (name.startsWith('on') || name === 'srcdoc') el.removeAttribute(attr.name);
-        if ((name === 'href' || name === 'src' || name === 'xlink:href') && /^\s*(javascript|vbscript|data:text\/html)/i.test(val)) {
-          el.removeAttribute(attr.name);
-        }
-      }
-    });
-    return tpl.innerHTML;
+    return _strictFallbackSanitize(dirtyHtml, false);
   }
+
   function sanitizeSvg(dirtySvg) {
     if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
       return window.DOMPurify.sanitize(dirtySvg, {
         USE_PROFILES: { svg: true },
-        FORBID_TAGS: ['script', 'foreignObject', 'iframe', 'object', 'embed'],
-        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover']
+        FORBID_TAGS: ['script', 'style', 'foreignObject', 'iframe', 'object', 'embed', 'animate', 'set', 'use'],
+        FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'href', 'xlink:href']
       });
     }
-    return sanitizeHtml(dirtySvg);
+    return _strictFallbackSanitize(dirtySvg, true);
   }
 
   /* ==================== STORAGE: INDEXEDDB + LOCALSTORAGE MIGRATION ==================== */
@@ -2405,25 +2757,35 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 
   /* ==================== PERSISTENCE & INTEGRITY ==================== */
   function validateChatStructure(raw) {
-    if (!raw || typeof raw !== 'object') return null;
-    const msgs = Array.isArray(raw.messages) ? raw.messages.filter(m => m && typeof m === 'object' && Array.isArray(m.versions) && m.versions.length).map(m => ({
-      id: safeId(m.id),
-      role: m.role === 'user' ? 'user' : 'assistant',
-      activeVersion: Math.max(0, Math.min(Number(m.activeVersion) || 0, m.versions.length - 1)),
-      versions: m.versions.map(v => ({
-        text: typeof v.text === 'string' ? v.text : '',
-        think: typeof v.think === 'string' ? v.think : '',
-        attachments: Array.isArray(v.attachments) ? v.attachments.filter(a => a && typeof a === 'object' && typeof a.name === 'string') : [],
-        quote: typeof v.quote === 'string' ? v.quote : null,
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const rawMsgs = Array.isArray(raw.messages) ? raw.messages.slice(-MAX_BACKUP_MSGS_PER_CHAT) : [];
+    const msgs = rawMsgs.filter(m => m && typeof m === 'object').map(m => {
+      // Support both v4+ versions[] and legacy flat { text, attachments, quote } backups
+      const rawVers = (Array.isArray(m.versions) && m.versions.length)
+        ? m.versions.slice(-20)
+        : [{ text: typeof m.text === 'string' ? m.text : '', think: typeof m.think === 'string' ? m.think : '', attachments: Array.isArray(m.attachments) ? m.attachments : [], quote: typeof m.quote === 'string' ? m.quote : null, ts: Number(m.ts) || Date.now() }];
+      const cleanVers = rawVers.filter(v => v && typeof v === 'object').map(v => ({
+        text: typeof v.text === 'string' ? v.text.slice(0, 200000) : '',
+        think: typeof v.think === 'string' ? v.think.slice(0, 100000) : '',
+        attachments: Array.isArray(v.attachments) ? v.attachments.slice(0, MAX_ATTACHMENTS_PER_MSG).map(sanitizeAttachment).filter(Boolean) : [],
+        quote: typeof v.quote === 'string' ? v.quote.slice(0, 600) : null,
         ts: Number(v.ts) || Date.now(),
         isError: !!v.isError,
-        statusText: typeof v.statusText === 'string' ? v.statusText : ''
-      }))
-    })) : [];
+        statusText: typeof v.statusText === 'string' ? v.statusText.slice(0, 120) : ''
+      }));
+      if (!cleanVers.length) return null;
+      return {
+        id: safeId(m.id),
+        role: m.role === 'user' ? 'user' : 'assistant',
+        activeVersion: Math.max(0, Math.min(Number(m.activeVersion) || 0, cleanVers.length - 1)),
+        versions: cleanVers
+      };
+    }).filter(Boolean);
     return {
       id: safeId(raw.id),
-      title: String(raw.title || 'Новый чат').slice(0, 120),
+      title: String(raw.title || 'Новый чат').replace(/[\u0000-\u001f]/g, '').slice(0, 120),
       folder: FOLDERS.includes(raw.folder) && raw.folder !== 'Архив' && raw.folder !== 'Избранное' ? raw.folder : 'Все',
+      projectId: typeof raw.projectId === 'string' && raw.projectId ? safeId(raw.projectId) : null,
       pinned: !!raw.pinned,
       favorite: !!raw.favorite,
       archived: !!raw.archived,
@@ -2434,21 +2796,32 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   }
 
   let saveTimer = null;
+  let saveChain = Promise.resolve();
+  let saveDirty = false;
+  function persistChatsNow() {
+    if (state.incognito) return saveChain;
+    saveDirty = false;
+    lsSet(LS_KEYS.ACTIVE, state.activeChatId);
+    const snapshot = state.chats;
+    saveChain = saveChain.then(async () => {
+      const ok = await FoxDB.set('chats', snapshot);
+      if (!ok) {
+        const lite = snapshot.map(c => ({ ...c, messages: c.messages.map(m => ({ ...m, versions: m.versions.map(v => ({ ...v, attachments: (v.attachments || []).filter(a => a.kind !== 'image') })) })) }));
+        lsSet(LS_KEYS.CHATS, lite);
+      }
+    }).catch(() => {});
+    return saveChain;
+  }
   function saveChats(immediate) {
     broadcastSync('chats');
     if (state.incognito) return;
+    saveDirty = true;
     lsSet(LS_KEYS.ACTIVE, state.activeChatId);
-    const persist = async () => {
-      const ok = await FoxDB.set('chats', state.chats);
-      if (!ok) {
-        // Fallback to localStorage without heavy base64 images if IDB unavailable
-        const lite = state.chats.map(c => ({ ...c, messages: c.messages.map(m => ({ ...m, versions: m.versions.map(v => ({ ...v, attachments: (v.attachments || []).filter(a => a.kind !== 'image') })) })) }));
-        lsSet(LS_KEYS.CHATS, lite);
-      }
-    };
-    if (immediate) { clearTimeout(saveTimer); persist(); }
-    else { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 150); }
+    if (immediate) { clearTimeout(saveTimer); saveTimer = null; persistChatsNow(); }
+    else { clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveTimer = null; persistChatsNow(); }, 150); }
   }
+  window.addEventListener('pagehide', () => { if (saveDirty) { clearTimeout(saveTimer); persistChatsNow(); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveDirty) { clearTimeout(saveTimer); persistChatsNow(); } });
   function saveMemory() {
     broadcastSync('memory'); FoxDB.set('memory', state.memory).then(ok => { if (!ok) lsSet(LS_KEYS.MEMORY, state.memory); }); }
   function saveBookmarks() { FoxDB.set('bookmarks', state.bookmarks).then(ok => { if (!ok) lsSet(LS_KEYS.BOOKMARKS, state.bookmarks); }); }
@@ -2510,9 +2883,9 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 
   /* ==================== THEME & 8-CATEGORY SETTINGS ==================== */
   function applyTheme(theme) {
-    state.theme = ['dark', 'light', 'paper'].includes(theme) ? theme : 'dark';
+    state.theme = ['dark', 'graphite', 'terminal', 'nightpaper', 'light', 'paper'].includes(theme) ? theme : 'dark';
     document.documentElement.setAttribute('data-theme', state.theme);
-    const colors = { dark: '#000000', light: '#ffffff', paper: '#f5f0e6' };
+    const colors = { dark: '#000000', graphite: '#121316', terminal: '#050806', nightpaper: '#181512', light: '#ffffff', paper: '#f5f0e6' };
     const meta = $('metaThemeColor'); if (meta) meta.setAttribute('content', colors[state.theme]);
     lsSet(LS_KEYS.THEME, state.theme);
     $('themeIcon').innerHTML = state.theme === 'dark'
@@ -2529,6 +2902,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     document.documentElement.setAttribute('data-font-family', s.fontFamily || 'sans');
     document.documentElement.setAttribute('data-radius', s.radius || 'normal');
     document.documentElement.setAttribute('data-density', s.density || 'normal');
+    document.documentElement.setAttribute('data-accent', s.accent || 'mono');
     const yaUser = (typeof getYandexAuth === 'function' && getYandexAuth()?.user) || null;
     const uname = (s.userName && s.userName.trim()) ? s.userName.trim() : ((yaUser && yaUser.displayName) ? yaUser.displayName : 'Пользователь');
     $('profileName').textContent = uname;
@@ -2541,6 +2915,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   function syncSettingsUi() {
     const s = state.settings;
     document.querySelectorAll('[data-set-theme]').forEach(b => b.classList.toggle('active', b.dataset.setTheme === state.theme));
+    document.querySelectorAll('[data-set-accent]').forEach(b => b.classList.toggle('active', b.dataset.setAccent === (s.accent || 'mono')));
     document.querySelectorAll('[data-set-ff]').forEach(b => b.classList.toggle('active', b.dataset.setFf === s.fontFamily));
     document.querySelectorAll('[data-set-font]').forEach(b => b.classList.toggle('active', b.dataset.setFont === s.font));
     document.querySelectorAll('[data-set-radius]').forEach(b => b.classList.toggle('active', b.dataset.setRadius === s.radius));
@@ -2787,8 +3162,9 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       return;
     }
     box.innerHTML = items.map(it => {
-      const thumb = it.att.kind === 'image'
-        ? `<img src="${it.att.dataUrl}" alt="${escapeHtml(it.att.name)}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
+      const safeThumbUrl = it.att.kind === 'image' ? sanitizeImageDataUrl(it.att.dataUrl) : '';
+      const thumb = safeThumbUrl
+        ? `<img src="${escapeHtml(safeThumbUrl)}" alt="${escapeHtml(it.att.name)}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
         : `<div style="width:40px;height:40px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${escapeHtml((it.att.kind || 'DOC').toUpperCase())}</div>`;
       const meta = it.att.metaNote ? ` · ${escapeHtml(it.att.metaNote)}` : '';
       return `
@@ -2859,83 +3235,94 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     list.innerHTML = state.memory.map(item => `<div class="mem-item"><span>${escapeHtml(item.text)}</span><button class="icon-btn" data-del-mem="${escapeHtml(item.id)}" style="min-width:34px;min-height:34px;width:34px;height:34px;" aria-label="Удалить факт">×</button></div>`).join('');
   }
 
-  /* ==================== API ROUTING & SAFE NON-DUPLICATING FAILOVER ==================== */
-  function buildApiMessages(chat, forVision) {
-    const sysParts = [SYSTEM_PROMPT_BASE];
-    const toneMap = {
-      concise: 'Стиль ответа: максимально кратко, чётко, без воды.',
-      detailed: 'Стиль ответа: подробно, с пояснениями и примерами.',
-      coder: 'Стиль ответа: строго технический, с чистым рабочим кодом, минимумом лишней воды и акцентом на практику.',
-      tech: 'Стиль ответа: строго технический, точный, с акцентом на практику.'
-    };
-    if (toneMap[state.settings.tone]) sysParts.push(toneMap[state.settings.tone]);
-    const fmtMap = {
-      short: 'Формат ответа: ответь максимально кратко (3–5 пунктов или 1 короткий абзац).',
-      steps: 'Формат ответа: распиши строго по пронумерованным шагам (Шаг 1, Шаг 2…).',
-      table: 'Формат ответа: оформи ключевую информацию в виде аккуратной Markdown-таблицы.'
-    };
-    if (fmtMap[state.formatPreset]) sysParts.push(fmtMap[state.formatPreset]);
-    if (state.settings.customPrompt && state.settings.customPrompt.trim()) sysParts.push('Дополнительные инструкции пользователя:\n' + state.settings.customPrompt.trim());
-    if (chat && chat.projectId) {
-      const proj = state.projects.find(p => p.id === chat.projectId);
-      if (proj) {
-        let pBlock = `Активный проект «${proj.name}»:`;
-        if (proj.instructions) pBlock += '\nИнструкции проекта: ' + proj.instructions;
-        if (proj.files && proj.files.length) {
-          pBlock += '\nФайлы базы знаний проекта:\n' + proj.files.map(f => `--- ${f.name} ---\n${(f.content || '').slice(0, 4000)}`).join('\n\n');
-        }
-        sysParts.push(pBlock);
-      }
-    }
-    if (state.memory.length > 0 && !state.incognito) sysParts.push('Известные факты о пользователе:\n' + state.memory.slice(0, 15).map(m => '- ' + m.text).join('\n'));
-
-    const msgs = chat.messages, out = [{ role: 'system', content: sysParts.join('\n\n') }];
-    let startIdx = 0;
+  /* ==================== SECURE SERVER API ROUTING (v7.0) ==================== */
+  function buildClientPayload(chat, allowVision, isContinue, existingText) {
+    const msgs = chat.messages;
+    let startIdx = 0, summary = '';
     if (msgs.length > 12) {
       const older = msgs.slice(0, msgs.length - 10), summaryLines = [];
       for (const m of older) {
         const v = getMsgVersion(m), clean = (v.text || '').replace(/```[\s\S]*?```/g, '[код]').replace(/\s+/g, ' ').trim();
         if (clean) summaryLines.push((m.role === 'user' ? 'Пользователь: ' : 'Fox AI: ') + (clean.length > 120 ? clean.slice(0, 120) + '…' : clean));
       }
-      if (summaryLines.length) out.push({ role: 'system', content: 'Сжатое резюме предыдущей части диалога:\n' + summaryLines.slice(-16).join('\n') });
+      if (summaryLines.length) summary = summaryLines.slice(-16).join('\n');
       startIdx = msgs.length - 10;
     }
+
+    const outMsgs = [];
     for (let i = startIdx; i < msgs.length; i++) {
       const m = msgs[i], v = getMsgVersion(m);
       let textPart = v.text || '';
-      if (v.quote) textPart = '> Цитата: ' + v.quote + '\n\n' + textPart;
-      const atts = v.attachments || [];
-      for (const ta of atts.filter(a => a.kind === 'text' || a.kind === 'pdf')) {
-        const note = ta.metaNote ? ` (${ta.metaNote})` : '';
-        textPart += `\n\n[Файл: ${ta.name}${note}]\n` + (ta.content || '').slice(0, MAX_DOC_CHARS);
+      const qStr = (typeof v.quote === 'string' && v.quote) ? v.quote : (typeof m.quote === 'string' ? m.quote : '');
+      if (m.role === 'user' && qStr) textPart = `> ${qStr.slice(0, 300)}\n\n` + textPart;
+      const atts = (Array.isArray(v.attachments) && v.attachments.length) ? v.attachments : (Array.isArray(m.attachments) ? m.attachments : []);
+      if (m.role === 'user' && atts.length) {
+        const docNotes = [];
+        const imgParts = [];
+        for (const a of atts.slice(0, MAX_ATTACHMENTS_PER_MSG)) {
+          const kind = a.kind || a.type || 'text';
+          const safeImg = kind === 'image' ? sanitizeImageDataUrl(a.dataUrl) : '';
+          const docText = typeof a.content === 'string' ? a.content : (typeof a.extractedText === 'string' ? a.extractedText : '');
+          if (safeImg && allowVision) imgParts.push({ type: 'image_url', image_url: { url: safeImg } });
+          else if (docText) docNotes.push(`[Файл: ${a.name}${a.metaNote ? ' (' + a.metaNote + ')' : ''}]\n${docText.slice(0, 14000)}`);
+          else if (kind === 'image') docNotes.push(`[Изображение: ${a.name}]`);
+        }
+        if (docNotes.length) textPart = (textPart ? textPart + '\n\n' : '') + docNotes.join('\n\n');
+        if (imgParts.length) {
+          outMsgs.push({ role: 'user', content: [{ type: 'text', text: textPart || 'Проанализируй вложение.' }, ...imgParts] });
+          continue;
+        }
       }
-      const imgAtts = atts.filter(a => a.kind === 'image');
-      if (m.role === 'user' && imgAtts.length > 0 && forVision) {
-        const parts = [{ type: 'text', text: textPart.trim() || 'Проанализируй прикреплённые изображения/кадры.' }];
-        for (const img of imgAtts.slice(0, 8)) parts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
-        out.push({ role: 'user', content: parts });
-      } else {
-        if (m.role === 'user' && imgAtts.length > 0 && !forVision) textPart += `\n\n[Прикреплено изображений/кадров: ${imgAtts.length}]`;
-        out.push({ role: m.role, content: textPart || ' ' });
+      if (textPart.trim()) outMsgs.push({ role: m.role, content: textPart });
+    }
+
+    if (isContinue) {
+      const tail = String(existingText || '').slice(-220);
+      const insideCode = hasUnclosedCodeFence(existingText);
+      const fence = '`' + '`' + '`';
+      const contInstr = insideCode
+        ? 'Продолжи код СТРОГО со следующего символа сразу после фрагмента ниже. НЕ повторяй уже написанные строки и НЕ открывай заново блок ' + fence + '. Закрой блок ' + fence + ' в самом конце, когда код будет полностью завершён.\n\nКонец предыдущего фрагмента:\n' + tail
+        : 'Продолжи предыдущий ответ точно с того места, где он прервался. Не повторяй уже написанное.\n\nКонец предыдущего фрагмента:\n' + tail;
+      outMsgs.push({ role: 'user', content: contInstr });
+    }
+
+    let projectContext = '';
+    if (chat && chat.projectId) {
+      const proj = state.projects.find(p => p.id === chat.projectId);
+      if (proj) {
+        projectContext = `Активный проект «${proj.name}»:`;
+        if (proj.instructions) projectContext += '\nИнструкции проекта: ' + proj.instructions;
+        if (proj.files && proj.files.length) {
+          projectContext += '\nФайлы базы знаний проекта:\n' + proj.files.map(f => `--- ${f.name} ---\n${(f.content || '').slice(0, 4000)}`).join('\n\n');
+        }
       }
     }
-    return out;
+
+    return {
+      taskType: detectTaskType(chat),
+      mode: state.mode,
+      tone: state.settings.tone,
+      formatPreset: state.formatPreset,
+      customPrompt: (state.settings.customPrompt || '').trim(),
+      projectContext,
+      memory: (!state.incognito && state.memory.length) ? state.memory.slice(0, 15).map(m => m.text) : [],
+      summary,
+      messages: outMsgs,
+      isContinuation: !!isContinue
+    };
   }
 
   function detectTaskType(chat) {
     const lastUser = [...chat.messages].reverse().find(m => m.role === 'user');
-    if (!lastUser) return 'fast';
-    const v = getMsgVersion(lastUser), atts = v.attachments || [];
-    if (atts.some(a => a.kind === 'image')) return 'vision';
-    if (state.mode === 'deep') return 'code';
-    if (atts.some(a => a.kind === 'text' && /\.(js|ts|py|html|css|json|sql|cpp|c|java|go|rs|php|sh|kt)$/i.test(a.name))) return 'code';
-    const txt = (v.text || '').toLowerCase();
-    if (/(```|function\b|const\b|let\b|class\b|import\b|def\b|select\b|html|css|javascript|python|typescript|react|sql|код|скрипт|напиши программу|исправь ошибку|рефактор|алгоритм|svg|mermaid|diff|график|визуализ|диаграмм|kpi|квиз|таймлайн)/i.test(txt)) return 'code';
+    const lastAtts = lastUser ? (getMsgVersion(lastUser).attachments || lastUser.attachments || []) : [];
+    if (lastAtts.some(a => (a.kind || a.type) === 'image' && sanitizeImageDataUrl(a.dataUrl))) return 'vision';
+    const txt = (lastUser ? (getMsgVersion(lastUser).text || '') : '').toLowerCase();
+    if (state.mode === 'deep' || /\b(код|code|html|css|js|javascript|python|sql|react|vue|алгоритм|рефактор|ошибк|баг|api|json|svg|график|таблиц|сравн|квиз)\b/.test(txt)) return 'code';
     return 'fast';
   }
 
   function hasUnclosedCodeFence(text) {
-    const matches = String(text || '').match(/```/g);
+    const matches = String(text || '').match(/^```/gm);
     return !!(matches && matches.length % 2 === 1);
   }
 
@@ -2943,64 +3330,48 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     if (!addition) return existing;
     if (!existing) return addition;
     let add = addition;
-    // Если мы внутри незакрытого блока кода, а модель снова открыла блок кода — убираем повторный заголовок
     if (hasUnclosedCodeFence(existing)) {
       add = add.replace(/^\s*```[\w+-]*\s*\n/, '');
     }
-    // Дедупликация стыка (если модель повторила последние 12–160 символов)
     const maxCheck = Math.min(160, existing.length, add.length);
     for (let len = maxCheck; len >= 12; len--) {
-      if (existing.endsWith(add.slice(0, len))) {
-        return existing + add.slice(len);
-      }
+      if (existing.endsWith(add.slice(0, len))) return existing + add.slice(len);
     }
     return existing + add;
   }
 
   async function streamCompletion(chat, onChunk, signal, isContinue, existingText) {
     const taskType = detectTaskType(chat);
-    const primaryModel = taskType === 'vision' ? _P.a.mVision : (taskType === 'code' ? _P.a.mCode : _P.a.mFast);
-    const fallbackModel = taskType === 'fast' ? _P.b.mFast : _P.b.mCode;
-    const primaryMaxTokens = (taskType === 'code' || state.mode === 'deep') ? 16384 : 8192;
-    const fallbackMaxTokens = 8192;
-    const buildMsgs = allowVision => {
-      const arr = buildApiMessages(chat, allowVision);
-      if (isContinue) {
-        const tail = String(existingText || '').slice(-220);
-        const insideCode = hasUnclosedCodeFence(existingText);
-        const fence = '`' + '`' + '`';
-        const contInstr = insideCode
-          ? 'Продолжи код СТРОГО со следующего символа сразу после фрагмента ниже. НЕ повторяй уже написанные строки и НЕ открывай заново блок ' + fence + '. Закрой блок ' + fence + ' в самом конце, когда код будет полностью завершён.\n\nКонец предыдущего фрагмента:\n' + tail
-          : 'Продолжи предыдущий ответ точно с того места, где он прервался. Не повторяй уже написанное.\n\nКонец предыдущего фрагмента:\n' + tail;
-        arr.push({ role: 'user', content: contInstr });
-      }
-      return arr;
-    };
+    const payload = buildClientPayload(chat, taskType === 'vision', isContinue, existingText);
+    const res = await fetch(FOX_API_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify(payload)
+    });
 
-    let receivedAnyPrimary = false;
-    const wrappedOnChunk = chunk => {
-      if (chunk.content || chunk.reasoning) receivedAnyPrimary = true;
-      onChunk(chunk);
-    };
-
-    try {
-      return await fetchSseProvider(_P.a.u, _P.a.k, primaryModel, buildMsgs(taskType === 'vision'), wrappedOnChunk, signal, true, primaryMaxTokens);
-    } catch (err) {
-      if (signal && signal.aborted) throw err;
-      if (receivedAnyPrimary) {
-        const partialErr = new Error('PARTIAL_STREAM_INTERRUPTED');
-        partialErr.isPartial = true;
-        throw partialErr;
-      }
-      return await fetchSseProvider(_P.b.u, _P.b.k, fallbackModel, buildMsgs(false), onChunk, signal, false, fallbackMaxTokens);
+    if (res.status === 401) {
+      window.__foxAuthUser = null;
+      syncYandexAuthUi();
+      showAuthGate('Сессия истекла — войдите через Яндекс ID снова', true);
+      throw new Error('UNAUTHORIZED');
     }
-  }
-
-  async function fetchSseProvider(url, apiKey, model, messages, onChunk, signal, isPrimary, maxTokens) {
-    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
-    if (isPrimary) { headers['HTTP-Referer'] = 'https://fox-ai.app'; headers['X-Title'] = 'Fox AI'; }
-    const res = await fetch(url, { method: 'POST', headers, signal, body: JSON.stringify({ model, messages, stream: true, temperature: 0.7, max_tokens: maxTokens || 8192 }) });
+    if (res.status === 429) {
+      let msg = 'Превышен лимит запросов. Попробуйте позже.';
+      try { const j = await res.json(); if (j && j.message) msg = j.message; } catch {}
+      showToast(msg);
+      throw new Error('RATE_LIMIT');
+    }
     if (!res.ok || !res.body) throw new Error('HTTP_' + res.status);
+
+    const qUsed = Number(res.headers.get('X-Fox-Quota-Used'));
+    if (Number.isFinite(qUsed) && qUsed >= 0) {
+      state.quota.count = Math.min(DAILY_LIMIT, qUsed);
+      lsSet(LS_KEYS.QUOTA, state.quota);
+      syncQuota();
+    }
+
     const reader = res.body.getReader(), decoder = new TextDecoder('utf-8');
     let buffer = '', gotAnyToken = false, finishReason = null;
 
@@ -3318,7 +3689,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
           const svg = renderChartSvg(cfg, curType, false);
           if (svg) {
             const types = [['bar','Столбцы'],['hbar','Полосы'],['line','Линия'],['area','Область'],['donut','Кольцо'],['radar','Радар']];
-            return hold(`<div class="viz-card" data-chart-card="${chId}"><div class="viz-head"><span class="viz-title">${ICONS.chart}<span>${escapeHtml(cfg.title || 'Визуализация')}</span></span><div class="code-tools"><button class="code-btn" data-chart-sort="${chId}" aria-label="Сортировать">${ICONS.sort}</button><button class="code-btn" data-dl-chart-png="${chId}">PNG</button><button class="code-btn" data-dl-chart="${chId}" aria-label="Скачать SVG">${ICONS.download}</button></div></div><div class="viz-type-bar" id="chartTabs_${chId}">${types.map(([t, l]) => `<button class="viz-pill ${curType === t ? 'active' : ''}" data-chart-type="${chId}:${t}">${l}</button>`).join('')}</div><div class="viz-body" id="chartBody_${chId}">${svg}</div><div class="viz-tooltip" id="chartTip_${chId}">Нажмите на элемент графика</div></div>`);
+            return hold(`<div class="viz-card" data-chart-card="${chId}"><div class="viz-head"><span class="viz-title">${ICONS.chart}<span>${escapeHtml(cfg.title || 'Визуализация')}</span></span><div class="code-tools"><button class="code-btn" data-chart-sort="${chId}" aria-label="Сортировать">${ICONS.sort}</button><button class="code-btn" data-viz-zoom="chart:${chId}">Зум</button><button class="code-btn" data-dl-chart-png="${chId}">PNG</button><button class="code-btn" data-dl-chart="${chId}" aria-label="Скачать SVG">${ICONS.download}</button></div></div><div class="viz-type-bar" id="chartTabs_${chId}">${types.map(([t, l]) => `<button class="viz-pill ${curType === t ? 'active' : ''}" data-chart-type="${chId}:${t}">${l}</button>`).join('')}</div><div class="viz-body" id="chartBody_${chId}">${svg}</div><div class="viz-tooltip" id="chartTip_${chId}">Нажмите на элемент графика</div></div>`);
           }
         } catch (e) {}
       }
@@ -3367,14 +3738,66 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         } catch (e) {}
       }
 
+      if (!isOpenLive && lang === 'calc') {
+        try {
+          const cfg = JSON.parse(cleanCode);
+          const inputs = Array.isArray(cfg.inputs) ? cfg.inputs.slice(0, 8) : [];
+          const outputs = Array.isArray(cfg.outputs) ? cfg.outputs.slice(0, 6) : [];
+          if (inputs.length && outputs.length) {
+            const calcId = 'calc_' + safeMid + '_' + (++codeCounter);
+            const initVars = {};
+            inputs.forEach(inp => { initVars[String(inp.id || 'x')] = Number(inp.value ?? inp.min ?? 0); });
+            window.__foxCalcStore = window.__foxCalcStore || new Map();
+            window.__foxCalcStore.set(calcId, { inputs, outputs, vars: initVars });
+            const rowsHtml = inputs.map(inp => {
+              const vid = escapeHtml(String(inp.id || 'x'));
+              const mn = Number(inp.min ?? 0), mx = Number(inp.max ?? 100), st = Number(inp.step ?? 1), vl = Number(inp.value ?? mn);
+              const unit = inp.unit ? ' ' + escapeHtml(String(inp.unit)) : '';
+              return `<div class="calc-row"><div class="calc-row-top"><span class="calc-row-label">${escapeHtml(inp.label || vid)}</span><span class="calc-row-val" data-calc-val="${vid}">${vl}${unit}</span></div><input type="range" class="calc-slider" data-calc-id="${calcId}" data-calc-var="${vid}" min="${mn}" max="${mx}" step="${st}" value="${vl}"></div>`;
+            }).join('');
+            const resHtml = outputs.map((out, oi) => {
+              const val = evalSafeCalcFormula(out.formula || '0', initVars);
+              const fmtVal = Number.isFinite(val) ? (Math.round(val * 100) / 100).toLocaleString('ru-RU') : '—';
+              const unit = out.unit ? ' ' + escapeHtml(String(out.unit)) : '';
+              return `<div class="calc-res-tile"><div class="calc-res-label">${escapeHtml(out.label || 'Результат')}</div><div class="calc-res-val" data-calc-out="${oi}">${fmtVal}${unit}</div></div>`;
+            }).join('');
+            return hold(`<div class="calc-card" data-calc-id="${calcId}"><div class="calc-head"><span>${escapeHtml(cfg.title || 'Калькулятор')}</span><span style="font-size:11px;color:var(--text-muted);font-weight:500;">Интерактивный расчёт</span></div><div class="calc-body">${rowsHtml}<div class="calc-results">${resHtml}</div></div></div>`);
+          }
+        } catch (e) {}
+      }
+
+      if (!isOpenLive && lang === 'stepper') {
+        try {
+          const st = JSON.parse(cleanCode);
+          const steps = Array.isArray(st) ? st : (Array.isArray(st.steps) ? st.steps : []);
+          if (steps.length) {
+            const sid = 'st_' + safeMid + '_' + (++codeCounter);
+            window.__foxStepperStore = window.__foxStepperStore || new Map();
+            window.__foxStepperStore.set(sid, { title: st.title || 'Пошаговый гайд', steps, idx: 0, done: new Set() });
+            const first = steps[0] || {};
+            return hold(`<div class="stepper-card" data-stepper="${sid}"><div class="stepper-head"><span>${escapeHtml(st.title || 'Пошаговый гайд')}</span><span data-st-role="meta" style="font-size:11.5px;color:var(--text-muted);font-weight:500;">Шаг 1 из ${steps.length}</span></div><div class="stepper-bar"><div class="stepper-bar-fill" data-st-role="fill" style="width:${Math.round(100 / steps.length)}%;"></div></div><div class="stepper-body"><div class="stepper-step-num" data-st-role="num">Шаг 1</div><div class="stepper-step-title" data-st-role="title">${escapeHtml(first.title || '')}</div><div class="stepper-step-desc" data-st-role="desc">${escapeHtml(first.desc || '')}</div></div><div class="stepper-foot"><div style="display:flex;gap:6px;"><button class="code-btn" data-stepper-nav="${sid}:-1">Назад</button><button class="code-btn" data-stepper-nav="${sid}:1">Далее</button></div><button class="code-btn primary" data-stepper-done="${sid}" data-st-role="done">Выполнено</button></div></div>`);
+          }
+        } catch (e) {}
+      }
+
+      if (!isOpenLive && lang === 'diff') {
+        const diffLines = cleanCode.split('\n').map(line => {
+          const cls = line.startsWith('+') && !line.startsWith('+++') ? 'add'
+            : (line.startsWith('-') && !line.startsWith('---') ? 'del'
+              : (line.startsWith('@@') ? 'hunk' : ''));
+          return `<div class="diff-line ${cls}">${escapeHtml(line)}</div>`;
+        }).join('');
+        return hold(`<div class="diff-card"><div class="diff-head"><span>Изменения (Diff)</span><button class="code-btn" data-copy-code="${cid}" aria-label="Копировать">${ICONS.copy}</button></div><div class="diff-lines">${diffLines}</div></div>`);
+      }
+
       if (!isOpenLive && lang === 'mermaid') {
         const svg = renderMermaidSvg(cleanCode);
-        if (svg) return hold(`<div class="diagram-card"><div class="code-win-bar"><div class="code-win-left"><span class="code-win-dots"><i></i><i></i><i></i></span><span class="code-win-meta">MERMAID</span></div><div class="code-tools"><button class="code-btn" data-copy-code="${cid}" aria-label="Копировать">${ICONS.copy}</button><button class="code-btn" data-dl-code="${cid}" aria-label="Скачать">${ICONS.download}</button></div></div><div class="diagram-canvas">${svg}</div></div>`);
+        if (svg) return hold(`<div class="diagram-card"><div class="code-win-bar"><div class="code-win-left"><span class="code-win-dots"><i></i><i></i><i></i></span><span class="code-win-meta">MERMAID</span></div><div class="code-tools"><button class="code-btn" data-viz-zoom="card">Зум</button><button class="code-btn" data-copy-code="${cid}" aria-label="Копировать">${ICONS.copy}</button><button class="code-btn" data-dl-code="${cid}" aria-label="Скачать">${ICONS.download}</button></div></div><div class="diagram-canvas">${svg}</div></div>`);
       }
 
       if (!isOpenLive && lang === 'svg' && /<svg[\s\S]*<\/svg>/i.test(cleanCode)) {
         const safeSvg = sanitizeSvg(cleanCode);
-        return hold(`<div class="diagram-card"><div class="code-win-bar"><div class="code-win-left"><span class="code-win-dots"><i></i><i></i><i></i></span><span class="code-win-meta">SVG</span></div><div class="code-tools"><button class="code-btn primary" data-open-ide="${cid}">${ICONS.play}<span>IDE</span></button><button class="code-btn" data-copy-code="${cid}" aria-label="Копировать">${ICONS.copy}</button><button class="code-btn" data-dl-code="${cid}" aria-label="Скачать">${ICONS.download}</button></div></div><div class="diagram-canvas" style="filter:grayscale(1);">${safeSvg}</div></div>`);
+        return hold(`<div class="diagram-card"><div class="code-win-bar"><div class="code-win-left"><span class="code-win-dots"><i></i><i></i><i></i></span><span class="code-win-meta">SVG</span></div><div class="code-tools"><button class="code-btn" data-viz-zoom="card">Зум</button><button class="code-btn primary" data-open-ide="${cid}">${ICONS.play}<span>IDE</span></button><button class="code-btn" data-copy-code="${cid}" aria-label="Копировать">${ICONS.copy}</button><button class="code-btn" data-dl-code="${cid}" aria-label="Скачать">${ICONS.download}</button></div></div><div class="diagram-canvas" style="filter:grayscale(1);">${safeSvg}</div></div>`);
       }
 
       const canPreview = ['html', 'htm', 'svg', 'widget'].includes(lang);
@@ -3608,6 +4031,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
             </div>
           </div>
           <p class="welcome-sub">${state.incognito ? 'Режим Инкогнито · Чем помочь?' : 'Чем помочь?'}</p>
+        <div class="fox-mood-pill" id="foxMoodPill"><span class="fox-mood-dot"></span><span id="foxMoodText">Лиса готова к работе</span></div>
           <div class="quick-grid">
             <button class="quick-card" data-quick="Построй визуализацию (блок chart JSON) и KPI-карточки (блок kpi JSON) по трендам технологий 2026"><div class="quick-card-head">${ICONS.chart}<span class="quick-card-title">График и KPI</span></div></button>
             <button class="quick-card" data-quick="Напиши минималистичный интерактивный HTML-таймер Помодоро в чёрно-белом стиле"><div class="quick-card-head"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span class="quick-card-title">Код и IDE</span></div></button>
@@ -3701,6 +4125,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 
     if (state.searchOpen) runInChatSearch();
     if (scrollToBottom) elChatScroll.scrollTop = elChatScroll.scrollHeight;
+    updateChatMinimap(); updateTocPill();
   }
 
   function buildMessageHtml(msg, idx, total, chatId) {
@@ -3721,10 +4146,12 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     const quoteHtml = v.quote ? `<div class="msg-quote-ref">${escapeHtml(v.quote)}</div>` : '';
     let attHtml = '';
     if (v.attachments && v.attachments.length) {
-      attHtml = '<div class="msg-attachments">' + v.attachments.map((a, aIdx) => a.kind === 'image'
-        ? `<img class="msg-att-img" src="${a.dataUrl}" alt="${escapeHtml(a.name)}" data-lightbox="${a.dataUrl}">`
-        : `<button class="msg-att-chip" data-view-file="${mid}:${aIdx}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${escapeHtml(a.name)}</span></button>`
-      ).join('') + '</div>';
+      attHtml = '<div class="msg-attachments">' + v.attachments.map((a, aIdx) => {
+        const safeImg = a.kind === 'image' ? sanitizeImageDataUrl(a.dataUrl) : '';
+        return safeImg
+          ? `<img class="msg-att-img" src="${escapeHtml(safeImg)}" alt="${escapeHtml(a.name)}" data-lightbox-ref="${mid}:${aIdx}">`
+          : `<button class="msg-att-chip" data-view-file="${mid}:${aIdx}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${escapeHtml(a.name)}</span></button>`;
+      }).join('') + '</div>';
     }
 
     const bodyContent = isUser
@@ -3768,10 +4195,12 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   function renderAttachments() {
     if (!state.pendingAttachments.length) { elAttPreview.classList.remove('show'); elAttPreview.innerHTML = ''; return; }
     elAttPreview.classList.add('show');
-    elAttPreview.innerHTML = state.pendingAttachments.map((a, idx) => a.kind === 'image'
-      ? `<div class="att-thumb img-thumb" data-edit-photo="${idx}"><img src="${a.dataUrl}" alt="${escapeHtml(a.name)}"><span class="att-edit-badge">Ред.</span><button class="att-remove" data-rm-att="${idx}" aria-label="Удалить">×</button></div>`
-      : `<div class="att-thumb file-thumb" data-view-pending="${idx}"><span>${escapeHtml(a.name)}</span><button class="att-remove" data-rm-att="${idx}" aria-label="Удалить">×</button></div>`
-    ).join('');
+    elAttPreview.innerHTML = state.pendingAttachments.map((a, idx) => {
+      const safeImg = a.kind === 'image' ? sanitizeImageDataUrl(a.dataUrl) : '';
+      return safeImg
+      ? `<div class="att-thumb img-thumb" data-edit-photo="${idx}"><img src="${escapeHtml(safeImg)}" alt="${escapeHtml(a.name)}"><span class="att-edit-badge">Ред.</span><button class="att-remove" data-rm-att="${idx}" aria-label="Удалить">×</button></div>`
+      : `<div class="att-thumb file-thumb" data-view-pending="${idx}"><span>${escapeHtml(a.name)}</span><button class="att-remove" data-rm-att="${idx}" aria-label="Удалить">×</button></div>`;
+    }).join('');
   }
 
   function renderQueue() {
@@ -3896,9 +4325,11 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   async function runGeneration(chat, assistantMsg, isContinue) {
     const genId = uid();
     consumeQuotaOnce(genId);
+    const ac = new AbortController();
     state.isStreaming = true;
+    document.body.classList.add('is-streaming');
     state.activeGenChatId = chat.id;
-    state.abortController = new AbortController();
+    state.abortController = ac;
     $('composerStatusText').textContent = 'Подготовка запроса…';
     startMiniFoxStreaming();
     setSendButtonState();
@@ -3959,11 +4390,11 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
               ver.text = (ver.text || '') + content;
             }
           }
-        }, state.abortController.signal, passContinue, baseTextBeforePass);
+        }, ac.signal, passContinue, baseTextBeforePass);
 
         const truncatedByLen = resMeta && resMeta.finishReason === 'length';
         const unclosedCode = hasUnclosedCodeFence(parseThinkText(ver.text, ver.think).visible);
-        if ((truncatedByLen || unclosedCode) && pass < MAX_AUTO_CONT && !(state.abortController && state.abortController.signal.aborted)) {
+        if ((truncatedByLen || unclosedCode) && pass < MAX_AUTO_CONT && !ac.signal.aborted) {
           passContinue = true;
           const stEl = $('liveGenStatusText'), cpEl = $('composerStatusText');
           if (stEl) stEl.textContent = 'Дописываю код…';
@@ -3989,9 +4420,12 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       streamDone = true;
       if (rafId) cancelAnimationFrame(rafId);
       stopMiniFoxStreaming(!ver.isError);
-      state.isStreaming = false;
-      state.activeGenChatId = null;
-      state.abortController = null;
+      if (state.abortController === ac) {
+        state.isStreaming = false;
+        document.body.classList.remove('is-streaming');
+        state.activeGenChatId = null;
+        state.abortController = null;
+      }
       chat.updatedAt = Date.now();
       saveChats(true);
       setSendButtonState();
@@ -4131,37 +4565,48 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   async function handleFilesSelected(files, typeHint) {
     closeModal('attachModal');
     for (const file of Array.from(files || [])) {
+      if (state.pendingAttachments.length >= MAX_ATTACHMENTS_PER_MSG) {
+        showToast(`Максимум ${MAX_ATTACHMENTS_PER_MSG} вложений в одном сообщении`);
+        break;
+      }
       try {
-        if (typeHint === 'image' || file.type.startsWith('image/')) {
-          state.pendingAttachments.push({ kind: 'image', name: file.name, dataUrl: await readImageResized(file) });
+        const isSvgFile = /\.svg$/i.test(file.name) || file.type === 'image/svg+xml';
+        if (!isSvgFile && (typeHint === 'image' || file.type.startsWith('image/'))) {
+          if (file.size > MAX_IMAGE_BYTES) throw new Error('Изображение превышает лимит 15 МБ');
+          const dataUrl = sanitizeImageDataUrl(await readImageResized(file));
+          if (!dataUrl) throw new Error('Повреждённое или неподдерживаемое изображение');
+          state.pendingAttachments.push({ kind: 'image', name: file.name.slice(0, 140), dataUrl });
         } else if (typeHint === 'video' || file.type.startsWith('video/')) {
           showToast('Извлечение кадров видео (без аудио)…');
           const frames = await extractVideoFrames(file);
-          state.pendingAttachments.push(...frames);
-          showToast(`Извлечено кадров: ${frames.length} (аудио не анализируется)`);
+          const room = Math.max(0, MAX_ATTACHMENTS_PER_MSG - state.pendingAttachments.length);
+          state.pendingAttachments.push(...frames.slice(0, room));
+          showToast(`Извлечено кадров: ${Math.min(frames.length, room)} (аудио не анализируется)`);
         } else if (typeHint === 'pdf' || /\.pdf$/i.test(file.name)) {
           showToast('Обработка PDF…');
           const { content, metaNote } = await extractPdfWithPdfJs(file);
-          state.pendingAttachments.push({ kind: 'pdf', name: file.name, content, metaNote });
+          state.pendingAttachments.push({ kind: 'pdf', name: file.name.slice(0, 140), content, metaNote });
           showToast(metaNote);
         } else if (/\.docx$/i.test(file.name)) {
           showToast('Чтение DOCX…');
           const { content, metaNote } = await extractDocxFile(file);
-          state.pendingAttachments.push({ kind: 'text', name: file.name, content, metaNote });
+          state.pendingAttachments.push({ kind: 'text', name: file.name.slice(0, 140), content, metaNote });
           showToast(metaNote);
         } else if (/\.xlsx$/i.test(file.name)) {
           showToast('Чтение XLSX…');
           const { content, metaNote } = await extractXlsxFile(file);
-          state.pendingAttachments.push({ kind: 'text', name: file.name, content, metaNote });
+          state.pendingAttachments.push({ kind: 'text', name: file.name.slice(0, 140), content, metaNote });
           showToast(metaNote);
         } else if (/\.csv$/i.test(file.name)) {
+          if (file.size > MAX_TEXT_BYTES) throw new Error('CSV превышает лимит 5 МБ');
           const raw = await file.text();
           const md = parseCsvToMarkdown(raw);
-          state.pendingAttachments.push({ kind: 'text', name: file.name, content: md.slice(0, MAX_DOC_CHARS), metaNote: `CSV · ${raw.split(/\r?\n/).length} строк` });
+          state.pendingAttachments.push({ kind: 'text', name: file.name.slice(0, 140), content: md.slice(0, MAX_DOC_CHARS), metaNote: `CSV · ${raw.split(/\r?\n/).length} строк` });
         } else {
+          if (file.size > MAX_TEXT_BYTES) throw new Error('Текстовый файл превышает лимит 5 МБ');
           const raw = await file.text();
           const truncated = raw.length > MAX_DOC_CHARS;
-          state.pendingAttachments.push({ kind: 'text', name: file.name, content: raw.slice(0, MAX_DOC_CHARS), metaNote: truncated ? `Передано ${MAX_DOC_CHARS} из ${raw.length} симв.` : `${raw.length} симв.` });
+          state.pendingAttachments.push({ kind: 'text', name: file.name.slice(0, 140), content: raw.slice(0, MAX_DOC_CHARS), metaNote: truncated ? `Передано ${MAX_DOC_CHARS} из ${raw.length} симв.` : `${raw.length} симв.` });
         }
       } catch (e) { showToast(e && e.message ? e.message : ('Не удалось обработать: ' + file.name)); }
     }
@@ -4214,10 +4659,13 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       try { data = JSON.parse(raw); } catch { throw new Error('некорректный JSON'); }
       if (!data || typeof data !== 'object' || !Array.isArray(data.chats)) throw new Error('отсутствует обязательный массив chats');
       if (data.version && (typeof data.version !== 'number' || data.version > 10)) throw new Error('неподдерживаемая версия бэкапа');
-      const cleanChats = data.chats.map(validateChatStructure).filter(Boolean);
+      const cleanChats = data.chats.slice(0, MAX_BACKUP_CHATS).map(validateChatStructure).filter(Boolean);
+      const cleanMemory = Array.isArray(data.memory) ? data.memory.slice(0, 200).filter(m => m && typeof m.text === 'string' && m.text.trim()).map(m => ({ id: safeId(m.id), text: m.text.trim().slice(0, 500), ts: Number(m.ts) || Date.now() })) : [];
+      const cleanBookmarks = Array.isArray(data.bookmarks) ? data.bookmarks.slice(0, 300).filter(b => b && typeof b.text === 'string' && b.text.trim()).map(b => ({ id: safeId(b.id), msgId: safeId(b.msgId), chatTitle: String(b.chatTitle || 'Fox AI').slice(0, 120), text: b.text.slice(0, 2000), ts: Number(b.ts) || Date.now() })) : [];
+      const cleanPrompts = Array.isArray(data.prompts) ? data.prompts.slice(0, 100).filter(p => p && typeof p.title === 'string' && typeof p.text === 'string').map(p => ({ id: safeId(p.id), title: p.title.slice(0, 100), text: p.text.slice(0, 3000) })) : [];
       const totalMsgs = cleanChats.reduce((s, c) => s + c.messages.length, 0);
-      const memCount = Array.isArray(data.memory) ? data.memory.length : 0;
-      const bmCount = Array.isArray(data.bookmarks) ? data.bookmarks.length : 0;
+      const memCount = cleanMemory.length;
+      const bmCount = cleanBookmarks.length;
 
       closeModal('exportModal');
       openDialog('Предпросмотр импорта', `
@@ -4231,16 +4679,18 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         { label: 'Объединить', cls: 'btn-secondary', onClick: () => {
           const existingIds = new Set(state.chats.map(c => c.id));
           for (const c of cleanChats) { if (existingIds.has(c.id)) c.id = uid(); state.chats.push(c); }
-          if (Array.isArray(data.memory)) { for (const m of data.memory) if (m && m.text && !state.memory.some(x => x.text === m.text)) state.memory.push({ id: uid(), text: String(m.text), ts: Date.now() }); saveMemory(); }
-          if (Array.isArray(data.bookmarks)) { for (const b of data.bookmarks) if (b && b.text) state.bookmarks.push({ id: uid(), msgId: safeId(b.msgId), chatTitle: String(b.chatTitle || 'Fox AI'), text: String(b.text), ts: Date.now() }); saveBookmarks(); }
+          if (cleanMemory.length) { for (const m of cleanMemory) if (!state.memory.some(x => x.text === m.text)) state.memory.push({ id: uid(), text: m.text, ts: m.ts }); saveMemory(); }
+          if (cleanBookmarks.length) { for (const b of cleanBookmarks) state.bookmarks.push({ id: uid(), msgId: b.msgId, chatTitle: b.chatTitle, text: b.text, ts: b.ts }); saveBookmarks(); }
+          if (cleanPrompts.length) { for (const p of cleanPrompts) if (!state.prompts.some(x => x.title === p.title && x.text === p.text)) state.prompts.push({ id: uid(), title: p.title, text: p.text }); savePrompts(); }
           saveChats(true); renderAll(); closeModal('dialogModal'); showToast('Данные объединены');
         } },
         { label: 'Заменить всё', cls: 'btn-primary', onClick: () => {
           state.chats = cleanChats.length ? cleanChats : [createChatObj(false)];
-          if (Array.isArray(data.memory)) { state.memory = data.memory.filter(m => m && m.text).map(m => ({ id: safeId(m.id), text: String(m.text), ts: Number(m.ts) || Date.now() })); saveMemory(); }
-          if (Array.isArray(data.bookmarks)) { state.bookmarks = data.bookmarks.filter(b => b && b.text).map(b => ({ id: safeId(b.id), msgId: safeId(b.msgId), chatTitle: String(b.chatTitle || 'Fox AI'), text: String(b.text), ts: Number(b.ts) || Date.now() })); saveBookmarks(); }
-          if (data.settings && typeof data.settings === 'object') { state.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings); applySettings(); }
-          if (data.theme) applyTheme(data.theme);
+          if (cleanMemory.length) { state.memory = cleanMemory; saveMemory(); }
+          if (cleanBookmarks.length) { state.bookmarks = cleanBookmarks; saveBookmarks(); }
+          if (cleanPrompts.length) { state.prompts = cleanPrompts; savePrompts(); }
+          if (data.settings && typeof data.settings === 'object') { state.settings = sanitizeSettingsObj(data.settings); applySettings(); }
+          if (typeof data.theme === 'string') applyTheme(data.theme);
           state.activeChatId = state.chats[0].id;
           saveChats(true); renderAll(); closeModal('dialogModal'); showToast('История заменена');
         } }
@@ -4281,10 +4731,17 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     $('ideEditor').value = state.ide[fileKey] || '';
     document.querySelectorAll('[data-ide-file]').forEach(b => b.classList.toggle('primary', b.dataset.ideFile === fileKey));
   }
-  function buildIdeCombinedHtml() {
+  function createIdeRunToken() {
+    const arr = new Uint8Array(16);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(arr);
+    else for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function buildIdeCombinedHtml(runToken) {
     state.ide[state.ide.activeFile] = $('ideEditor').value;
     const bgCss = state.ide.darkBg ? 'html,body{background:#0a0a0a;color:#f5f5f5;}' : '';
-    const hook = `<script>(function(){const s=(l,a)=>{try{parent.postMessage({__foxIde:true,level:l,msg:a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' ')},'*');}catch(e){}};['log','warn','error','info'].forEach(f=>{const o=console[f];console[f]=function(...a){s(f,a);if(o)o.apply(console,a);};});window.addEventListener('error',e=>s('error',[e.message+(e.lineno?' (стр. '+e.lineno+')':'')]));window.addEventListener('unhandledrejection',e=>s('error',['Promise: '+(e.reason?.message||e.reason)]));})();<\/script>`;
+    const tok = JSON.stringify(String(runToken || ''));
+    const hook = `<script>(function(){const T=${tok};const s=(l,a)=>{try{parent.postMessage({__foxIde:true,token:T,level:l,msg:a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' ').slice(0,2000)},'*');}catch(e){}};['log','warn','error','info'].forEach(f=>{const o=console[f];console[f]=function(...a){s(f,a);if(o)o.apply(console,a);};});window.addEventListener('error',e=>s('error',[e.message+(e.lineno?' (стр. '+e.lineno+')':'')]));window.addEventListener('unhandledrejection',e=>s('error',['Promise: '+(e.reason?.message||e.reason)]));})();<\/script>`;
     const styles = `<style>${bgCss}\n${state.ide.css || ''}</style>`;
     const script = state.ide.js ? `<script>${state.ide.js}<\/script>` : '';
     const rawHtml = state.ide.html || '';
@@ -4295,8 +4752,10 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${hook}${styles}</head><body>${rawHtml}${script}</body></html>`;
   }
   function runIdePreview() {
-    state.ide.logs = []; renderIdeConsole();
-    $('ideIframe').srcdoc = buildIdeCombinedHtml();
+    state.ide.logs = [];
+    state.ide.runToken = createIdeRunToken();
+    renderIdeConsole();
+    $('ideIframe').srcdoc = buildIdeCombinedHtml(state.ide.runToken);
   }
   function switchIdeTab(tab) {
     document.querySelectorAll('[data-ide-tab]').forEach(b => b.classList.toggle('active', b.dataset.ideTab === tab));
@@ -4319,7 +4778,17 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     list.innerHTML = state.ide.logs.map(l => `<div class="ide-log ${escapeHtml(l.level)}">[${escapeHtml(l.level.toUpperCase())}] ${escapeHtml(l.msg)}</div>`).join('');
   }
   window.addEventListener('message', e => {
-    if (e.data && e.data.__foxIde) { state.ide.logs.push({ level: String(e.data.level || 'log'), msg: String(e.data.msg || '') }); renderIdeConsole(); }
+    const iframe = $('ideIframe');
+    if (!iframe || e.source !== iframe.contentWindow) return;
+    if (e.origin !== 'null' && e.origin !== window.location.origin) return;
+    const d = e.data;
+    if (!d || typeof d !== 'object' || d.__foxIde !== true) return;
+    if (!state.ide.runToken || d.token !== state.ide.runToken) return;
+    if (state.ide.logs.length >= 300) return;
+    const allowedLevels = { log: 1, warn: 1, error: 1, info: 1 };
+    const level = allowedLevels[d.level] ? d.level : 'log';
+    state.ide.logs.push({ level, msg: String(d.msg || '').slice(0, 2000) });
+    renderIdeConsole();
   });
 
   /* ==================== CONTEXT SHEET, READER, VIEWER, PHOTO EDITOR, TTS ==================== */
@@ -4333,7 +4802,8 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       <button class="sheet-row-btn" data-ctx="fork"><span>Ответвить диалог отсюда (Fork)</span></button>
       <button class="sheet-row-btn" data-ctx="bm"><span>${bm ? 'Убрать из закладок' : 'Сохранить в закладки'}</span></button>
       <button class="sheet-row-btn" data-ctx="read"><span>Режим чтения (на весь экран)</span></button>
-      <button class="sheet-row-btn" data-ctx="share"><span>Поделиться</span></button>
+      <button class="sheet-row-btn" data-ctx="share"><span>Поделиться текстом</span></button>
+      <button class="sheet-row-btn" data-ctx="share-card"><span>Поделиться карточкой PNG</span></button>
       <button class="sheet-row-btn" data-ctx="select"><span>Копировать часть текста</span></button>
       <button class="sheet-row-btn" data-ctx="quote"><span>Цитировать</span></button>
       <button class="sheet-row-btn" data-ctx="copy"><span>Копировать полностью</span></button>
@@ -4468,11 +4938,13 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       elDrawerBackdrop.style.opacity = Math.max(0, 1 + dx / w);
       return;
     }
-    if (swipingMsgEl && dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-      const clamped = Math.min(72, dx * 0.65);
+    if (swipingMsgEl && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+      const clamped = dx > 0 ? Math.min(72, dx * 0.65) : Math.max(-72, dx * 0.65);
       swipingInner.classList.add('swiping'); swipingInner.style.transform = `translateX(${clamped}px)`;
-      const prog = Math.min(1, clamped / 52);
-      swipingInd.style.opacity = prog; swipingInd.style.transform = `translateY(-50%) scale(${0.6 + prog * 0.4})`;
+      if (dx > 0) {
+        const prog = Math.min(1, clamped / 52);
+        swipingInd.style.opacity = prog; swipingInd.style.transform = `translateY(-50%) scale(${0.6 + prog * 0.4})`;
+      }
     }
   }, { passive: true });
 
@@ -4492,6 +4964,9 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     if (endX - touchStartX > 64) {
       const msg = getActiveChat().messages.find(m => m.id === swipingMsgEl.dataset.msgId);
       if (msg) setQuote(parseThinkText(getMsgVersion(msg).text, '').visible || getMsgVersion(msg).text);
+    } else if (endX - touchStartX < -64) {
+      const msg = getActiveChat().messages.find(m => m.id === swipingMsgEl.dataset.msgId);
+      if (msg) { haptic(16); toggleBookmark(msg.id); }
     }
     swipingMsgEl = null;
   }, { passive: true });
@@ -4644,14 +5119,25 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     }
   }
 
+  function assertSafeZipUncompressedSize(zip) {
+    let total = 0;
+    for (const entry of Object.values(zip.files || {})) {
+      const uSize = entry && entry._data && Number(entry._data.uncompressedSize);
+      if (Number.isFinite(uSize) && uSize > 0) total += uSize;
+      if (total > MAX_ZIP_UNCOMPRESSED_BYTES) throw new Error('Архив документа слишком большой после распаковки (лимит 25 МБ)');
+    }
+  }
   async function extractDocxFile(file) {
     if (file.size > 15 * 1024 * 1024) throw new Error('DOCX слишком большой (макс. 15 МБ)');
     if (typeof window.JSZip === 'undefined') throw new Error('Для чтения .docx нужен интернет (JSZip)');
     const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+    assertSafeZipUncompressedSize(zip);
     const xmlEntry = zip.file('word/document.xml');
     if (!xmlEntry) throw new Error('Повреждённый файл DOCX');
     const xmlStr = await xmlEntry.async('string');
+    if (xmlStr.length > MAX_ZIP_UNCOMPRESSED_BYTES) throw new Error('Содержимое DOCX превышает безопасный лимит');
     const doc = new DOMParser().parseFromString(xmlStr, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('Повреждённая XML-структура DOCX');
     const paras = Array.from(doc.getElementsByTagName('w:p')).map(p =>
       Array.from(p.getElementsByTagName('w:t')).map(t => t.textContent).join('')
     ).filter(Boolean);
@@ -4667,6 +5153,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     if (file.size > 15 * 1024 * 1024) throw new Error('XLSX слишком большой (макс. 15 МБ)');
     if (typeof window.JSZip === 'undefined') throw new Error('Для чтения .xlsx нужен интернет (JSZip)');
     const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+    assertSafeZipUncompressedSize(zip);
     let shared = [];
     const ssEntry = zip.file('xl/sharedStrings.xml');
     if (ssEntry) {
@@ -5214,7 +5701,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       "self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))); self.clients.claim(); });",
       "self.addEventListener('fetch', e => {",
       "  const u = e.request.url;",
-      "  if (e.request.method !== 'GET' || u.includes('openrouter.ai') || u.includes('groq.com')) return;",
+      "  if (e.request.method !== 'GET' || u.includes('/api/')) return;",
       "  e.respondWith(fetch(e.request).then(r => { if (r.ok && u.startsWith(self.location.origin)) { const cl = r.clone(); caches.open(CACHE_NAME).then(c => c.put(e.request, cl)); } return r; }).catch(() => caches.match(e.request)));",
       "});"
     ].join('\n');
@@ -5672,7 +6159,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         const att = msg && getMsgVersion(msg).attachments?.[Number(aidx)];
         if (att) {
           closeModal('filesLibModal');
-          if (att.kind === 'image') { $('lightboxImg').src = att.dataUrl; $('lightbox').classList.add('open'); }
+          if (att.kind === 'image') { const su = sanitizeImageDataUrl(att.dataUrl); if (su) { $('lightboxImg').src = su; $('lightbox').classList.add('open'); } }
           else openFileViewer(att.name, (att.metaNote ? `[${att.metaNote}]\n\n` : '') + (att.content || ''));
         }
         return;
@@ -5769,7 +6256,16 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       const quick = e.target.closest('[data-quick]'); if (quick) { elComposer.value = quick.dataset.quick; autoResizeComposer(); handleSendAction(); return; }
       const followup = e.target.closest('[data-followup]'); if (followup) { elComposer.value = followup.dataset.followup; autoResizeComposer(); handleSendAction(); return; }
       const thinkToggle = e.target.closest('[data-toggle-think]'); if (thinkToggle) { const box = elChatContainer.querySelector(`[data-think-box="${thinkToggle.dataset.toggleThink}"]`); if (box) box.classList.toggle('expanded'); return; }
-      const lb = e.target.closest('[data-lightbox]'); if (lb) { $('lightboxImg').src = lb.dataset.lightbox; $('lightbox').classList.add('open'); return; }
+      const lbRef = e.target.closest('[data-lightbox-ref]');
+      if (lbRef) {
+        const [mid, aIdx] = lbRef.dataset.lightboxRef.split(':');
+        const msg = findMsg(mid);
+        const att = msg && getMsgVersion(msg).attachments && getMsgVersion(msg).attachments[Number(aIdx)];
+        const safeUrl = att ? sanitizeImageDataUrl(att.dataUrl) : '';
+        if (safeUrl) { $('lightboxImg').src = safeUrl; $('lightbox').classList.add('open'); }
+        return;
+      }
+      const lb = e.target.closest('[data-lightbox]'); if (lb) { const safeUrl = sanitizeImageDataUrl(lb.dataset.lightbox); if (safeUrl) { $('lightboxImg').src = safeUrl; $('lightbox').classList.add('open'); } return; }
 
       const vizTip = e.target.closest('[data-viz-tip]');
       if (vizTip) { const card = vizTip.closest('[data-chart-card]'); const tipEl = card && $('chartTip_' + card.dataset.chartCard); if (tipEl) { tipEl.textContent = vizTip.dataset.vizTip; tipEl.classList.add('show'); haptic(6); } return; }
@@ -5946,31 +6442,11 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   }
 
 
-  /* ==================== YANDEX ID AUTH (v6.2, MANDATORY GATE) ==================== */
-  const YANDEX_CLIENT_ID = '37f22e14615d4365b65355b6bd692259';
-  const YANDEX_REDIRECT_URI = 'https://foxai-sepia.vercel.app/';
-  const YANDEX_AUTH_LS_KEY = 'foxai_ya_auth_v1';
+  /* ==================== YANDEX ID SERVER AUTH (v7.0, HTTPONLY COOKIE + CSRF) ==================== */
+  window.__foxAuthUser = null;
 
   function getYandexAuth() {
-    try {
-      const raw = localStorage.getItem(YANDEX_AUTH_LS_KEY);
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (!obj || !obj.token) return null;
-      if (obj.expiresAt && Date.now() > obj.expiresAt) {
-        localStorage.removeItem(YANDEX_AUTH_LS_KEY);
-        return null;
-      }
-      return obj;
-    } catch { return null; }
-  }
-
-  function saveYandexAuth(authObj) {
-    try { localStorage.setItem(YANDEX_AUTH_LS_KEY, JSON.stringify(authObj)); } catch {}
-  }
-
-  function clearYandexAuth() {
-    try { localStorage.removeItem(YANDEX_AUTH_LS_KEY); } catch {}
+    return window.__foxAuthUser ? { user: window.__foxAuthUser } : null;
   }
 
   function renderAvatarInto(el, name, avatarUrl) {
@@ -5989,51 +6465,6 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     }
   }
 
-  function buildYandexAuthUrl() {
-    const redirectUri = (window.location.origin === 'https://foxai-sepia.vercel.app')
-      ? YANDEX_REDIRECT_URI
-      : YANDEX_REDIRECT_URI;
-    return 'https://oauth.yandex.ru/authorize'
-      + '?response_type=token'
-      + '&client_id=' + encodeURIComponent(YANDEX_CLIENT_ID)
-      + '&redirect_uri=' + encodeURIComponent(redirectUri);
-  }
-
-  function parseYandexCallbackFromUrl() {
-    const hashStr = (window.location.hash || '').replace(/^#/, '');
-    const searchStr = (window.location.search || '').replace(/^\?/, '');
-    const hParams = new URLSearchParams(hashStr);
-    const sParams = new URLSearchParams(searchStr);
-    const token = hParams.get('access_token');
-    const expiresIn = parseInt(hParams.get('expires_in') || '31536000', 10);
-    const error = hParams.get('error') || sParams.get('error');
-    const errorDesc = hParams.get('error_description') || sParams.get('error_description') || '';
-    if (token || error) {
-      try {
-        const cleanUrl = window.location.pathname + (sParams.has('error') ? '' : window.location.search);
-        window.history.replaceState(null, '', cleanUrl);
-      } catch {}
-    }
-    return { token, expiresIn: Number.isFinite(expiresIn) ? expiresIn : 31536000, error, errorDesc };
-  }
-
-  async function fetchYandexUserInfo(token) {
-    const resp = await fetch('https://login.yandex.ru/info?format=json&oauth_token=' + encodeURIComponent(token));
-    if (resp.status === 401 || resp.status === 403) {
-      const err = new Error('UNAUTHORIZED');
-      err.code = 401;
-      throw err;
-    }
-    if (!resp.ok) throw new Error('HTTP_' + resp.status);
-    const d = await resp.json();
-    const displayName = (d.display_name || [d.first_name, d.last_name].filter(Boolean).join(' ') || d.real_name || d.login || 'Пользователь').trim();
-    const email = d.default_email || (Array.isArray(d.emails) ? d.emails[0] : '') || '';
-    const avatarUrl = (!d.is_avatar_empty && d.default_avatar_id)
-      ? ('https://avatars.yandex.net/get-yapic/' + encodeURIComponent(d.default_avatar_id) + '/islands-200')
-      : '';
-    return { id: String(d.id || ''), login: d.login || '', displayName, email, avatarUrl };
-  }
-
   function setAuthGateStatus(msg, isError) {
     const st = $('authGateStatus');
     if (!st) return;
@@ -6044,6 +6475,10 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   function showAuthGate(msg, isError) {
     const gate = $('authGate');
     if (gate) gate.classList.remove('hidden');
+    const btn = $('btnYandexLogin');
+    if (btn) btn.disabled = false;
+    const txt = $('btnYandexLoginText');
+    if (txt) txt.textContent = 'Войти с Яндекс ID';
     setAuthGateStatus(msg || '', !!isError);
   }
 
@@ -6053,13 +6488,12 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   }
 
   function syncYandexAuthUi() {
-    const auth = getYandexAuth();
+    const u = window.__foxAuthUser;
     const card = $('yaAccountCard');
-    if (!auth || !auth.user) {
+    if (!u) {
       if (card) card.classList.add('hidden');
       return;
     }
-    const u = auth.user;
     const displayName = (state.settings.userName && state.settings.userName.trim()) ? state.settings.userName.trim() : (u.displayName || 'Пользователь');
     if ($('profileName')) $('profileName').textContent = displayName;
     renderAvatarInto($('profileAvatar'), displayName, u.avatarUrl);
@@ -6080,7 +6514,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         const txt = $('btnYandexLoginText');
         if (txt) txt.textContent = 'Переход в Яндекс ID…';
         setAuthGateStatus('', false);
-        window.location.assign(buildYandexAuthUrl());
+        window.location.assign('/api/auth/login');
       });
     }
     const btnLogout = $('btnYandexLogout');
@@ -6089,14 +6523,15 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       btnLogout.addEventListener('click', () => {
         openDialog(
           'Выйти из Яндекс ID?',
-          '<p style="font-size:13.5px;color:var(--text-muted);line-height:1.5;margin:0;">Вы вернётесь на экран входа. Локальные чаты останутся на устройстве.</p>',
+          '<p style="font-size:13.5px;color:var(--text-muted);line-height:1.5;margin:0;">Сессия на сервере будет закрыта, и вы вернётесь на экран входа. Локальные чаты останутся на устройстве.</p>',
           [
             { label: 'Отмена', cls: 'btn-secondary', onClick: () => closeModal('dialogModal') },
-            { label: 'Выйти', cls: 'btn-danger', onClick: () => {
+            { label: 'Выйти', cls: 'btn-danger', onClick: async () => {
               closeModal('dialogModal');
               closeModal('settingsModal');
               closeDrawer();
-              clearYandexAuth();
+              try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }); } catch {}
+              window.__foxAuthUser = null;
               syncYandexAuthUi();
               showAuthGate('Вы вышли из аккаунта', false);
             } }
@@ -6108,55 +6543,517 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 
   async function initYandexAuth() {
     bindYandexAuthEvents();
-    const cb = parseYandexCallbackFromUrl();
-    if (cb.error) {
-      const msg = cb.error === 'access_denied'
-        ? 'Вход отменён. Нажмите кнопку выше, чтобы войти через Яндекс ID.'
-        : ('Ошибка входа Яндекс ID: ' + (cb.errorDesc || cb.error));
-      showAuthGate(msg, true);
+    const params = new URLSearchParams(window.location.search || '');
+    const authErr = params.get('auth_error');
+    if (authErr) {
+      try { window.history.replaceState(null, '', window.location.pathname); } catch {}
+      const errMap = {
+        access_denied: 'Вход отменён. Нажмите кнопку выше, чтобы войти через Яндекс ID.',
+        invalid_state: 'Проверка безопасности не пройдена. Попробуйте войти снова.',
+        server_config: 'На сервере не завершена настройка ключей Яндекс ID.'
+      };
+      showAuthGate(errMap[authErr] || ('Ошибка входа Яндекс ID: ' + authErr), true);
       return false;
     }
-    if (cb.token) {
-      showAuthGate('Загрузка профиля Яндекс ID…', false);
-      const btn = $('btnYandexLogin');
-      if (btn) btn.disabled = true;
-      const expiresAt = Date.now() + cb.expiresIn * 1000;
-      let user = { id: '', login: '', displayName: 'Аккаунт Яндекс ID', email: '', avatarUrl: '' };
-      try {
-        user = await fetchYandexUserInfo(cb.token);
-      } catch (e) {
-        if (e && e.code === 401) {
-          if (btn) btn.disabled = false;
-          showAuthGate('Не удалось подтвердить токен Яндекса. Попробуйте войти снова.', true);
-          return false;
+
+    try {
+      const res = await fetch('/api/auth/me', { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.authenticated && data.user) {
+          window.__foxAuthUser = data.user;
+          if (data.quota && Number.isFinite(data.quota.used)) {
+            state.quota.count = Math.min(DAILY_LIMIT, data.quota.used);
+            lsSet(LS_KEYS.QUOTA, state.quota);
+            syncQuota();
+          }
+          syncYandexAuthUi();
+          hideAuthGate();
+          return true;
         }
       }
-      saveYandexAuth({ token: cb.token, expiresAt, user });
-      if (btn) btn.disabled = false;
-      syncYandexAuthUi();
-      hideAuthGate();
-      showToast('Добро пожаловать, ' + (user.displayName || 'Пользователь'));
-      return true;
-    }
-    const existing = getYandexAuth();
-    if (!existing) {
-      showAuthGate('', false);
-      return false;
-    }
+    } catch {}
+
+    window.__foxAuthUser = null;
     syncYandexAuthUi();
-    hideAuthGate();
-    // Silent background profile refresh
-    fetchYandexUserInfo(existing.token).then(user => {
-      saveYandexAuth({ token: existing.token, expiresAt: existing.expiresAt, user });
-      syncYandexAuthUi();
-    }).catch(e => {
-      if (e && e.code === 401) {
-        clearYandexAuth();
-        syncYandexAuthUi();
-        showAuthGate('Сессия Яндекс ID истекла — войдите снова', true);
+    showAuthGate('', false);
+    return false;
+  }
+
+  /* ==================== CONSOLE & DEVTOOLS PROTECTION (v6.3) ==================== */
+  (function initConsoleGuard() {
+    if (window.__foxConsoleGuard) return;
+    window.__foxConsoleGuard = true;
+    // Block DevTools & View-Source keyboard shortcuts (keep Ctrl+C/V/A/Z working)
+    document.addEventListener('keydown', function(e) {
+      const k = (e.key || '').toLowerCase();
+      const code = e.code || '';
+      const ctrl = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      const alt = e.altKey;
+      const isF12 = k === 'f12' || code === 'F12' || e.keyCode === 123;
+      const isInspect = (ctrl && shift && (k === 'i' || k === 'j' || k === 'c' || k === 'k' || k === 'e' || code === 'KeyI' || code === 'KeyJ' || code === 'KeyC' || code === 'KeyK'))
+        || (e.metaKey && alt && (k === 'i' || k === 'j' || k === 'c' || k === 'u' || code === 'KeyI' || code === 'KeyJ' || code === 'KeyC' || code === 'KeyU'));
+      const isViewSource = ctrl && !shift && !alt && (k === 'u' || code === 'KeyU');
+      if (isF12 || isInspect || isViewSource) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
+    // Block browser context menu everywhere except editable inputs (message bubbles already use custom sheet)
+    document.addEventListener('contextmenu', function(e) {
+      const t = e.target;
+      if (t && (t.closest('textarea, input, [contenteditable="true"]') || t.closest('.msg-wrapper'))) return;
+      e.preventDefault();
+    }, true);
+
+    // Silence browser console output in production
+    try {
+      const noop = function() {};
+      if (window.console) {
+        ['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'dirxml', 'table', 'group', 'groupCollapsed', 'groupEnd'].forEach(fn => {
+          try { window.console[fn] = noop; } catch {}
+        });
+        try { if (typeof window.console.clear === 'function') window.console.clear(); } catch {}
+      }
+    } catch {}
+  })();
+
+
+  /* ==================== FOX AI v8.0 VISUAL & UX SUITE (15 FEATURES) ==================== */
+  // Feature 6: Safe zero-eval recursive math parser for ```calc widgets
+  function evalSafeCalcFormula(expr, vars) {
+    const s = String(expr || '').replace(/\s+/g, '');
+    let pos = 0;
+    const peek = () => s[pos] || '';
+    const consume = ch => { if (s[pos] === ch) { pos++; return true; } return false; };
+    function parseExpr() {
+      let val = parseTerm();
+      while (peek() === '+' || peek() === '-') {
+        const op = s[pos++];
+        const r = parseTerm();
+        val = op === '+' ? val + r : val - r;
+      }
+      return val;
+    }
+    function parseTerm() {
+      let val = parsePow();
+      while (peek() === '*' || peek() === '/') {
+        const op = s[pos++];
+        const r = parsePow();
+        val = op === '*' ? val * r : (r === 0 ? 0 : val / r);
+      }
+      return val;
+    }
+    function parsePow() {
+      let base = parseUnary();
+      if (peek() === '^') { pos++; base = Math.pow(base, parsePow()); }
+      return base;
+    }
+    function parseUnary() {
+      if (consume('+')) return parseUnary();
+      if (consume('-')) return -parseUnary();
+      return parsePrimary();
+    }
+    function parsePrimary() {
+      if (consume('(')) { const v = parseExpr(); consume(')'); return v; }
+      const numM = s.slice(pos).match(/^\d+(?:\.\d+)?/);
+      if (numM) { pos += numM[0].length; return parseFloat(numM[0]); }
+      const idM = s.slice(pos).match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+      if (idM) {
+        pos += idM[0].length;
+        const name = idM[0];
+        if (consume('(')) {
+          const args = [];
+          if (peek() !== ')') {
+            args.push(parseExpr());
+            while (consume(',')) args.push(parseExpr());
+          }
+          consume(')');
+          const fns = { round: Math.round, floor: Math.floor, ceil: Math.ceil, sqrt: Math.sqrt, abs: Math.abs, min: Math.min, max: Math.max, pow: Math.pow };
+          return fns[name] ? fns[name](...args) : 0;
+        }
+        return Object.prototype.hasOwnProperty.call(vars, name) ? Number(vars[name]) : 0;
+      }
+      return 0;
+    }
+    try { return parseExpr(); } catch { return NaN; }
+  }
+
+  // Feature 2: Contextual Fox Mood Indicator
+  function updateFoxMood(customMsg) {
+    const el = $('foxMoodText');
+    if (!el) return;
+    if (customMsg) { el.textContent = customMsg; return; }
+    const hr = new Date().getHours();
+    if (state.mode === 'deep') el.textContent = 'Глубокий фокус · режим анализа';
+    else if (hr >= 23 || hr < 6) el.textContent = 'Ночной режим · тихая работа';
+    else el.textContent = 'Лиса готова к работе';
+  }
+
+  // Feature 4: Chat Minimap / Timeline Scrubber
+  function updateChatMinimap() {
+    const mm = $('chatMinimap');
+    if (!mm) return;
+    const chat = getActiveChat();
+    const msgs = chat ? chat.messages : [];
+    if (msgs.length < 4) { mm.classList.remove('show'); mm.innerHTML = ''; return; }
+    const bmIds = new Set(state.bookmarks.map(b => b.msgId));
+    const slice = msgs.slice(-28);
+    mm.innerHTML = slice.map(m => {
+      const v = getMsgVersion(m);
+      const isCode = m.role === 'assistant' && /```/.test(v.text || '');
+      const isBm = bmIds.has(m.id);
+      const cls = isBm ? 'bm' : (isCode ? 'code' : (m.role === 'user' ? 'user' : ''));
+      const title = escapeHtml((v.text || '').replace(/\s+/g, ' ').slice(0, 48));
+      return `<button type="button" class="mm-dot ${cls}" data-mm-jump="${escapeHtml(m.id)}" title="${title}" aria-label="${title || 'Сообщение'}"></button>`;
+    }).join('');
+    mm.classList.add('show');
+  }
+
+  // Feature 11: Floating TOC Pill for Long Answers
+  function updateTocPill() {
+    const wrap = $('tocPillWrap'), dd = $('tocDropdown'), lbl = $('tocPillLabel');
+    if (!wrap || !dd || !lbl) return;
+    const chat = getActiveChat();
+    const lastAssist = chat ? [...chat.messages].reverse().find(m => m.role === 'assistant') : null;
+    if (!lastAssist) { wrap.classList.remove('show'); dd.classList.remove('open'); return; }
+    const domEl = elChatContainer.querySelector(`[data-msg-id="${CSS.escape(lastAssist.id)}"]`);
+    const heads = domEl ? Array.from(domEl.querySelectorAll('.md-body h1, .md-body h2, .md-body h3')) : [];
+    if (heads.length < 2) { wrap.classList.remove('show'); dd.classList.remove('open'); return; }
+    heads.forEach((h, i) => { h.dataset.tocIdx = String(i); });
+    lbl.textContent = `Разделы (${heads.length})`;
+    dd.innerHTML = heads.map((h, i) => `<button type="button" class="toc-item" data-toc-go="${i}">${escapeHtml(h.textContent.trim().slice(0, 64))}</button>`).join('');
+    wrap.classList.add('show');
+  }
+
+  // Feature 15: Activity Dashboard & 49-day Heatmap
+  function renderActivityDashboard() {
+    const heat = $('actHeatmap');
+    if (!heat) return;
+    const countsByDay = new Map();
+    let totalMsgs = 0;
+    for (const c of state.chats) {
+      for (const m of (c.messages || [])) {
+        totalMsgs++;
+        const ts = Number(getMsgVersion(m).ts || c.updatedAt || Date.now());
+        const d = new Date(ts);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        countsByDay.set(key, (countsByDay.get(key) || 0) + 1);
+      }
+    }
+    let streak = 0;
+    const now = new Date();
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if ((countsByDay.get(key) || 0) > 0) streak++;
+      else if (i > 0) break;
+    }
+    if ($('actStatChats')) $('actStatChats').textContent = String(state.chats.length);
+    if ($('actStatMsgs')) $('actStatMsgs').textContent = String(totalMsgs);
+    if ($('actStatDeck')) $('actStatDeck').textContent = String((state.flashDeck || []).length);
+    if ($('actStreakLabel')) $('actStreakLabel').textContent = `Серия: ${streak} дн.`;
+    const cells = [];
+    for (let i = 48; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const cnt = countsByDay.get(key) || 0;
+      const lvl = cnt === 0 ? '' : (cnt <= 2 ? 'l1' : (cnt <= 6 ? 'l2' : 'l3'));
+      cells.push(`<div class="act-cell ${lvl}" title="${key}: ${cnt} сообщ."></div>`);
+    }
+    heat.innerHTML = cells.join('');
+  }
+
+  // Feature 17: Share Answer as Styled PNG Card
+  async function shareMessageAsPngCard(msgId) {
+    const msg = findMsg(msgId);
+    if (!msg) return;
+    const v = getMsgVersion(msg);
+    const raw = (msg.role === 'assistant' ? (parseThinkText(v.text, '').visible || v.text) : v.text) || '';
+    const clean = raw.replace(/```[\s\S]*?```/g, '[блок кода]').replace(/[#*_`>]/g, '').trim().slice(0, 900);
+    const cs = getComputedStyle(document.documentElement);
+    const bg = cs.getPropertyValue('--bg').trim() || '#000000';
+    const surface = cs.getPropertyValue('--surface').trim() || '#0d0d0d';
+    const border = cs.getPropertyValue('--border-strong').trim() || '#2a2a2a';
+    const textCol = cs.getPropertyValue('--text').trim() || '#f5f5f5';
+    const mutedCol = cs.getPropertyValue('--text-muted').trim() || '#a0a0a0';
+
+    const W = 1080, pad = 72, cardW = W - pad * 2;
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    ctx.font = '400 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const words = clean.split(/\s+/);
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > cardW - 96 && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+      if (lines.length >= 22) break;
+    }
+    if (cur && lines.length < 22) lines.push(cur);
+    const H = Math.max(540, 260 + lines.length * 48 + 110);
+    c.width = W; c.height = H;
+
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = surface; ctx.strokeStyle = border; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(pad, pad, cardW, H - pad * 2, 32); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = textCol;
+    ctx.font = '700 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('Fox AI', pad + 48, pad + 78);
+    ctx.fillStyle = mutedCol;
+    ctx.font = '500 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(new Date().toLocaleDateString('ru-RU'), W - pad - 170, pad + 76);
+
+    ctx.strokeStyle = border; ctx.beginPath(); ctx.moveTo(pad + 48, pad + 112); ctx.lineTo(W - pad - 48, pad + 112); ctx.stroke();
+
+    ctx.fillStyle = textCol;
+    ctx.font = '400 31px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    lines.forEach((ln, idx) => ctx.fillText(ln, pad + 48, pad + 178 + idx * 48));
+
+    c.toBlob(async blob => {
+      if (!blob) return;
+      const file = new File([blob], 'fox-ai-card.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Fox AI' }); return; } catch {}
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'fox-ai-card.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Карточка fox-ai-card.png сохранена');
+    }, 'image/png');
+  }
+
+  // Feature 5: Fullscreen Viz/SVG Zoom Viewer
+  const vizZoomState = { scale: 1, tx: 0, ty: 0, dragging: false, sx: 0, sy: 0, svgMarkup: '' };
+  function applyVizZoomTransform() {
+    const inner = $('vizZoomInner');
+    if (inner) inner.style.transform = `translate(${vizZoomState.tx}px, ${vizZoomState.ty}px) scale(${vizZoomState.scale})`;
+    if ($('btnVizZoomReset')) $('btnVizZoomReset').textContent = Math.round(vizZoomState.scale * 100) + '%';
+  }
+  function openVizZoom(svgEl) {
+    if (!svgEl) return;
+    vizZoomState.scale = 1; vizZoomState.tx = 0; vizZoomState.ty = 0;
+    vizZoomState.svgMarkup = svgEl.outerHTML;
+    $('vizZoomInner').innerHTML = sanitizeSvg(vizZoomState.svgMarkup);
+    applyVizZoomTransform();
+    $('vizZoomModal').classList.add('open');
+  }
+
+  // Feature 12: Zen / Focus Mode
+  function toggleZenMode(force) {
+    const on = typeof force === 'boolean' ? force : !document.body.classList.contains('zen-mode');
+    document.body.classList.toggle('zen-mode', on);
+    if ($('zenMenuStatus')) $('zenMenuStatus').textContent = on ? 'Вкл' : 'Выкл';
+    closeModal('headerMenuModal');
+  }
+
+  function bindV8VisualEvents() {
+    // Accent buttons (Feature 13)
+    document.querySelectorAll('[data-set-accent]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.settings.accent = btn.dataset.setAccent;
+        applySettings();
+      });
+    });
+
+    // Zen Mode triggers (Feature 12)
+    if ($('btnMenuZen')) $('btnMenuZen').addEventListener('click', () => toggleZenMode());
+    if ($('btnZenExit')) $('btnZenExit').addEventListener('click', () => toggleZenMode(false));
+    document.addEventListener('keydown', e => { if (e.altKey && (e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я')) { e.preventDefault(); toggleZenMode(); } });
+
+    // Mini-IDE Tablet button (Feature 16)
+    if ($('btnIdeTablet')) {
+      $('btnIdeTablet').addEventListener('click', () => {
+        $('ideIframe').classList.remove('mobile-frame');
+        $('ideIframe').classList.add('tablet-frame');
+        $('btnIdeTablet').classList.add('primary');
+        $('btnIdeMobile').classList.remove('primary');
+        $('btnIdeDesktop').classList.remove('primary');
+      });
+    }
+    if ($('btnIdeMobile')) $('btnIdeMobile').addEventListener('click', () => { $('ideIframe').classList.remove('tablet-frame'); if ($('btnIdeTablet')) $('btnIdeTablet').classList.remove('primary'); });
+    if ($('btnIdeDesktop')) $('btnIdeDesktop').addEventListener('click', () => { $('ideIframe').classList.remove('tablet-frame'); if ($('btnIdeTablet')) $('btnIdeTablet').classList.remove('primary'); });
+
+    // Voice Input with Animated Wave (Feature 9)
+    const micBtn = $('btnVoiceInput');
+    if (micBtn) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let rec = null, isRec = false;
+      micBtn.addEventListener('click', () => {
+        if (!SR) { showToast('Голосовой ввод не поддерживается этим браузером'); return; }
+        if (isRec && rec) { try { rec.stop(); } catch {} return; }
+        rec = new SR();
+        rec.lang = 'ru-RU'; rec.interimResults = true; rec.continuous = false;
+        const baseText = elComposer.value ? (elComposer.value.trimEnd() + ' ') : '';
+        rec.onstart = () => { isRec = true; micBtn.classList.add('recording'); haptic(12); };
+        rec.onresult = ev => {
+          let spoken = '';
+          for (let i = 0; i < ev.results.length; i++) spoken += ev.results[i][0].transcript;
+          elComposer.value = baseText + spoken;
+          autoResizeComposer(); setSendButtonState();
+        };
+        rec.onerror = () => { isRec = false; micBtn.classList.remove('recording'); };
+        rec.onend = () => { isRec = false; micBtn.classList.remove('recording'); };
+        try { rec.start(); } catch { showToast('Не удалось запустить микрофон'); }
+      });
+    }
+
+    // Minimap Jump (Feature 4)
+    if ($('chatMinimap')) {
+      $('chatMinimap').addEventListener('click', e => {
+        const dot = e.target.closest('[data-mm-jump]');
+        if (!dot) return;
+        const target = elChatContainer.querySelector(`[data-msg-id="${CSS.escape(dot.dataset.mmJump)}"]`);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
+    // Floating TOC Pill (Feature 11)
+    if ($('btnTocToggle')) $('btnTocToggle').addEventListener('click', () => $('tocDropdown').classList.toggle('open'));
+    if ($('tocDropdown')) {
+      $('tocDropdown').addEventListener('click', e => {
+        const it = e.target.closest('[data-toc-go]');
+        if (!it) return;
+        const h = elChatContainer.querySelector(`[data-toc-idx="${CSS.escape(it.dataset.tocGo)}"]`);
+        if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('tocDropdown').classList.remove('open');
+      });
+    }
+
+    // Viz Zoom Modal Controls & Drag (Feature 5)
+    if ($('btnVizZoomIn')) $('btnVizZoomIn').addEventListener('click', () => { vizZoomState.scale = Math.min(4, vizZoomState.scale + 0.35); applyVizZoomTransform(); });
+    if ($('btnVizZoomOut')) $('btnVizZoomOut').addEventListener('click', () => { vizZoomState.scale = Math.max(0.5, vizZoomState.scale - 0.35); applyVizZoomTransform(); });
+    if ($('btnVizZoomReset')) $('btnVizZoomReset').addEventListener('click', () => { vizZoomState.scale = 1; vizZoomState.tx = 0; vizZoomState.ty = 0; applyVizZoomTransform(); });
+    if ($('btnVizZoomClose')) $('btnVizZoomClose').addEventListener('click', () => $('vizZoomModal').classList.remove('open'));
+    if ($('btnVizZoomSvg')) $('btnVizZoomSvg').addEventListener('click', () => { if (vizZoomState.svgMarkup) downloadFile('fox-ai-diagram.svg', vizZoomState.svgMarkup, 'image/svg+xml;charset=utf-8'); });
+    if ($('btnVizZoomPng')) $('btnVizZoomPng').addEventListener('click', () => {
+      const svgEl = $('vizZoomInner').querySelector('svg');
+      if (!svgEl) return;
+      const xml = new XMLSerializer().serializeToString(svgEl);
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = Math.max(800, img.width * 2); c.height = Math.max(500, img.height * 2);
+        const ctx = c.getContext('2d'); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#000'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => { if (!b) return; const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'fox-ai-diagram.png'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); });
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+    });
+    const zStage = $('vizZoomStage');
+    if (zStage) {
+      zStage.addEventListener('pointerdown', e => { vizZoomState.dragging = true; vizZoomState.sx = e.clientX - vizZoomState.tx; vizZoomState.sy = e.clientY - vizZoomState.ty; });
+      window.addEventListener('pointermove', e => { if (!vizZoomState.dragging) return; vizZoomState.tx = e.clientX - vizZoomState.sx; vizZoomState.ty = e.clientY - vizZoomState.sy; applyVizZoomTransform(); });
+      window.addEventListener('pointerup', () => { vizZoomState.dragging = false; });
+    }
+
+    // Interactive ```calc slider updates (Feature 6)
+    elChatContainer.addEventListener('input', e => {
+      const sl = e.target.closest('.calc-slider');
+      if (!sl) return;
+      const cid = sl.dataset.calcId, vid = sl.dataset.calcVar;
+      const store = window.__foxCalcStore && window.__foxCalcStore.get(cid);
+      if (!store) return;
+      const val = Number(sl.value);
+      store.vars[vid] = val;
+      const inpDef = store.inputs.find(x => String(x.id) === vid);
+      const card = sl.closest('.calc-card');
+      const lblEl = card && card.querySelector(`[data-calc-val="${CSS.escape(vid)}"]`);
+      if (lblEl) lblEl.textContent = val + (inpDef && inpDef.unit ? ' ' + inpDef.unit : '');
+      store.outputs.forEach((out, oi) => {
+        const resEl = card && card.querySelector(`[data-calc-out="${oi}"]`);
+        if (!resEl) return;
+        const r = evalSafeCalcFormula(out.formula || '0', store.vars);
+        const fmt = Number.isFinite(r) ? (Math.round(r * 100) / 100).toLocaleString('ru-RU') : '—';
+        resEl.textContent = fmt + (out.unit ? ' ' + out.unit : '');
+      });
+    });
+
+    // Interactive ```stepper & Viz Zoom button clicks (Features 5, 8)
+    elChatContainer.addEventListener('click', e => {
+      const zBtn = e.target.closest('[data-viz-zoom]');
+      if (zBtn) {
+        const card = zBtn.closest('.viz-card, .diagram-card');
+        const svgEl = card ? card.querySelector('svg') : null;
+        if (svgEl) openVizZoom(svgEl);
+        return;
+      }
+      const stNav = e.target.closest('[data-stepper-nav]');
+      if (stNav) {
+        const [sid, delta] = stNav.dataset.stepperNav.split(':');
+        const st = window.__foxStepperStore && window.__foxStepperStore.get(sid);
+        if (!st) return;
+        st.idx = Math.max(0, Math.min(st.steps.length - 1, st.idx + Number(delta)));
+        const cur = st.steps[st.idx] || {};
+        const sCard = stNav.closest(".stepper-card"); if (sCard && sCard.querySelector('[data-st-role="meta"]')) sCard.querySelector('[data-st-role="meta"]').textContent = `Шаг ${st.idx + 1} из ${st.steps.length}`;
+        if (sCard && sCard.querySelector('[data-st-role="fill"]')) sCard.querySelector('[data-st-role="fill"]').style.width = `${Math.round(((st.idx + 1) / st.steps.length) * 100)}%`;
+        if (sCard && sCard.querySelector('[data-st-role="num"]')) sCard.querySelector('[data-st-role="num"]').textContent = `Шаг ${st.idx + 1}` + (st.done.has(st.idx) ? ' · выполнено' : '');
+        if (sCard && sCard.querySelector('[data-st-role="title"]')) sCard.querySelector('[data-st-role="title"]').textContent = cur.title || '';
+        if (sCard && sCard.querySelector('[data-st-role="desc"]')) sCard.querySelector('[data-st-role="desc"]').textContent = cur.desc || '';
+        return;
+      }
+      const stDone = e.target.closest('[data-stepper-done]');
+      if (stDone) {
+        const sid = stDone.dataset.stepperDone;
+        const st = window.__foxStepperStore && window.__foxStepperStore.get(sid);
+        if (!st) return;
+        st.done.add(st.idx);
+        haptic(14);
+        if (st.idx < st.steps.length - 1) st.idx++;
+        const cur = st.steps[st.idx] || {};
+        const sCard = stDone.closest(".stepper-card"); if (sCard && sCard.querySelector('[data-st-role="meta"]')) sCard.querySelector('[data-st-role="meta"]').textContent = `Шаг ${st.idx + 1} из ${st.steps.length}`;
+        if (sCard && sCard.querySelector('[data-st-role="fill"]')) sCard.querySelector('[data-st-role="fill"]').style.width = `${Math.round(((st.idx + 1) / st.steps.length) * 100)}%`;
+        if (sCard && sCard.querySelector('[data-st-role="num"]')) sCard.querySelector('[data-st-role="num"]').textContent = `Шаг ${st.idx + 1}` + (st.done.has(st.idx) ? ' · выполнено' : '');
+        if (sCard && sCard.querySelector('[data-st-role="title"]')) sCard.querySelector('[data-st-role="title"]').textContent = cur.title || '';
+        if (sCard && sCard.querySelector('[data-st-role="desc"]')) sCard.querySelector('[data-st-role="desc"]').textContent = cur.desc || '';
+        if (st.done.size >= st.steps.length) { showToast('Все шаги выполнены!'); updateFoxMood('Отличная работа!'); }
       }
     });
-    return true;
+
+    // Context Menu -> Share PNG Card (Feature 17)
+    if ($('contextActions')) {
+      $('contextActions').addEventListener('click', e => {
+        const btn = e.target.closest('[data-ctx="share-card"]');
+        if (!btn) return;
+        const mid = state.contextMsgId;
+        closeModal('contextModal');
+        if (mid) shareMessageAsPngCard(mid);
+      });
+    }
+
+    // Swipe-down to dismiss bottom sheets (Feature 3)
+    let shStartY = 0, shEl = null, shModal = null;
+    document.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      const handle = e.target.closest('.sheet-handle, .sheet-title, .settings-header');
+      if (!handle) return;
+      const sheet = handle.closest('.sheet');
+      const modal = sheet && sheet.closest('.modal-backdrop.open');
+      if (sheet && modal && sheet.scrollTop <= 2) {
+        shEl = sheet; shModal = modal; shStartY = e.touches[0].clientY;
+        shEl.classList.add('sheet-dragging');
+      }
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (!shEl || e.touches.length !== 1) return;
+      const dy = e.touches[0].clientY - shStartY;
+      if (dy > 0) shEl.style.transform = `translateY(${Math.min(320, dy)}px)`;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (!shEl) return;
+      const dy = (e.changedTouches[0] ? e.changedTouches[0].clientY : shStartY) - shStartY;
+      shEl.classList.remove('sheet-dragging');
+      shEl.style.transform = '';
+      if (dy > 95 && shModal) shModal.classList.remove('open');
+      shEl = null; shModal = null;
+    }, { passive: true });
+
+    // Refresh Activity Dashboard when Settings opens (Feature 15)
+    if ($('btnOpenSettings')) $('btnOpenSettings').addEventListener('click', () => setTimeout(renderActivityDashboard, 30));
   }
 
   /* ==================== REAL ASYNC INIT (ZERO ARTIFICIAL DELAY, SECTION 7.4) ==================== */
@@ -6166,7 +7063,9 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     await initStorage();
     initPwa();
     bindEvents();
+    bindV8VisualEvents();
     renderAll();
+    updateFoxMood();
     updateDeckBadge();
     restoreCurrentDraft();
     await initYandexAuth();
@@ -6177,5 +7076,35 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   bootstrap();
 })();
 </script>
+
+<!-- ==================== FLOATING MINIMAP, TOC, ZEN & VIZ ZOOM (v8.0) ==================== -->
+<nav class="chat-minimap" id="chatMinimap" aria-label="Навигация по сообщениям"></nav>
+<div class="toc-pill-wrap" id="tocPillWrap">
+  <button type="button" class="toc-pill-btn" id="btnTocToggle" aria-label="Оглавление ответа">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span id="tocPillLabel">Разделы ответа</span>
+  </button>
+  <div class="toc-dropdown" id="tocDropdown"></div>
+</div>
+<button type="button" class="zen-exit-btn" id="btnZenExit" aria-label="Выйти из режима Дзен">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+  <span>Выйти из Дзен</span>
+</button>
+<div class="ide-modal" id="vizZoomModal" role="dialog" aria-modal="true" aria-label="Просмотр диаграммы">
+  <div class="ide-header">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="code-btn" id="btnVizZoomOut">−</button>
+      <button class="code-btn" id="btnVizZoomReset">100%</button>
+      <button class="code-btn" id="btnVizZoomIn">+</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="code-btn" id="btnVizZoomPng">PNG</button>
+      <button class="code-btn" id="btnVizZoomSvg">SVG</button>
+      <button class="icon-btn" id="btnVizZoomClose" aria-label="Закрыть просмотр"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+  </div>
+  <div class="viz-zoom-stage" id="vizZoomStage"><div class="viz-zoom-inner" id="vizZoomInner"></div></div>
+</div>
+
 </body>
 </html>
