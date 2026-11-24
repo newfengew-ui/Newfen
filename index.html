@@ -1496,6 +1496,22 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 }
 .ya-logout-btn:active { background: var(--surface-2); }
 
+
+/* ==================== ANTI-DEVTOOLS SHIELD OVERLAY (v8.2) ==================== */
+#devtoolsBlocker {
+  position: fixed; inset: 0; z-index: 99999;
+  background: var(--bg); color: var(--text);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 28px;
+}
+#devtoolsBlocker.active { display: flex; }
+.dt-block-box {
+  max-width: 360px; padding: 28px 22px; border-radius: 20px;
+  border: 1px solid var(--border-strong); background: var(--surface);
+}
+.dt-block-title { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
+.dt-block-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
 </style>
 </head>
 <body>
@@ -4842,7 +4858,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
       document.querySelectorAll('#photoQualSeg [data-qual]').forEach(b => b.classList.toggle('active', b.dataset.qual === '0.72'));
       renderPhotoEditorCanvas(); openModal('photoEditorModal');
     };
-    img.src = att.dataUrl;
+    const safePeUrl = sanitizeImageDataUrl(att.dataUrl); if (!safePeUrl) { showToast('Некорректное изображение'); return; } img.src = safePeUrl;
   }
   function renderPhotoEditorCanvas() {
     const pe = state.photoEdit; if (!pe.img) return;
@@ -5109,11 +5125,13 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
     if (!chat.messages.length) { showToast('Нет сообщений для печати'); return; }
     closeModal('exportModal');
     const html = buildPrintableReportHtml(chat);
-    const w = window.open('', '_blank');
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const w = window.open(blobUrl, '_blank', 'noopener,noreferrer');
     if (w) {
-      w.document.open(); w.document.write(html); w.document.close();
-      setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 250);
+      setTimeout(() => { URL.revokeObjectURL(blobUrl); }, 60000);
     } else {
+      URL.revokeObjectURL(blobUrl);
       downloadFile('fox-ai-print.html', html, 'text/html;charset=utf-8');
       showToast('Браузер заблокировал окно — сохранён HTML для печати');
     }
@@ -6619,6 +6637,21 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
         try { if (typeof window.console.clear === 'function') window.console.clear(); } catch {}
       }
     } catch {}
+
+    // Desktop DevTools open detector (docked panel threshold; skips mobile touch keyboards & automated headless checks)
+    const isDesktopPointer = () => {
+      try { return window.matchMedia && window.matchMedia('(pointer: fine)').matches && !navigator.webdriver; } catch { return false; }
+    };
+    const checkDevToolsOpen = () => {
+      if (!isDesktopPointer()) return;
+      const wDiff = (window.outerWidth || 0) - (window.innerWidth || 0);
+      const hDiff = (window.outerHeight || 0) - (window.innerHeight || 0);
+      const isOpen = (window.outerWidth > 0 && window.innerWidth > 0) && (wDiff > 200 || hDiff > 220);
+      const blk = document.getElementById('devtoolsBlocker');
+      if (blk) blk.classList.toggle('active', isOpen);
+    };
+    window.addEventListener('resize', checkDevToolsOpen, { passive: true });
+    setInterval(checkDevToolsOpen, 1500);
   })();
 
 
@@ -7106,5 +7139,7 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
   <div class="viz-zoom-stage" id="vizZoomStage"><div class="viz-zoom-inner" id="vizZoomInner"></div></div>
 </div>
 
+
+<div id="devtoolsBlocker" role="alert" aria-live="assertive"><div class="dt-block-box"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div class="dt-block-title">Инструменты разработчика заблокированы</div><p class="dt-block-sub">Закройте панель разработчика, чтобы продолжить работу в Fox AI.</p></div></div>
 </body>
 </html>

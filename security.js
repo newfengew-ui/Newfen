@@ -25,15 +25,20 @@ function sweepStoresIfNeeded(now) {
   }
 }
 
-function getAllowedOrigin(req) {
-  if (process.env.ALLOWED_ORIGIN) return process.env.ALLOWED_ORIGIN.replace(/\/+$/, '');
-  const host = (req.headers['x-forwarded-host'] || req.headers.host || 'foxai-sepia.vercel.app').split(',')[0].trim();
-  const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
-  return `${proto}://${host}`;
+function getAllowedOrigin() {
+  // Never trust unvalidated Host / X-Forwarded-Host headers (prevents Host Header Injection)
+  const raw = (process.env.ALLOWED_ORIGIN || 'https://foxai-sepia.vercel.app').trim().replace(/\/+$/, '');
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' || u.hostname === 'localhost' || u.hostname === '127.0.0.1') return u.origin;
+  } catch {}
+  return 'https://foxai-sepia.vercel.app';
 }
 
 function isOriginAllowed(req) {
-  const allowed = getAllowedOrigin(req);
+  const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') return false;
+  const allowed = getAllowedOrigin();
   const origin = req.headers.origin;
   if (origin) return origin.replace(/\/+$/, '') === allowed;
   const referer = req.headers.referer;

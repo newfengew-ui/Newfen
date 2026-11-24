@@ -17,9 +17,14 @@ module.exports = async function handler(req, res) {
   const secureCookie = origin.startsWith('https://');
   const clearState = serializeCookie(STATE_COOKIE, '', { maxAge: 0, httpOnly: true, secure: secureCookie, sameSite: 'Lax' });
 
+  const ALLOWED_AUTH_ERRORS = new Set([
+    'access_denied', 'invalid_state', 'missing_code', 'server_config',
+    'token_exchange_failed', 'no_access_token', 'profile_fetch_failed', 'auth_exception'
+  ]);
   const failRedirect = (reason) => {
+    const safeReason = ALLOWED_AUTH_ERRORS.has(String(reason)) ? String(reason) : 'auth_failed';
     res.setHeader('Set-Cookie', clearState);
-    res.writeHead(302, { Location: `/?auth_error=${encodeURIComponent(reason)}` });
+    res.writeHead(302, { Location: `/?auth_error=${encodeURIComponent(safeReason)}` });
     res.end();
   };
 
@@ -44,6 +49,7 @@ module.exports = async function handler(req, res) {
     const tokenRes = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      signal: AbortSignal.timeout(15_000),
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: String(code),
@@ -56,7 +62,8 @@ module.exports = async function handler(req, res) {
     if (!tokenData.access_token) return failRedirect('no_access_token');
 
     const infoRes = await fetch('https://login.yandex.ru/info?format=json', {
-      headers: { Authorization: `OAuth ${tokenData.access_token}` }
+      headers: { Authorization: `OAuth ${tokenData.access_token}` },
+      signal: AbortSignal.timeout(15_000)
     });
     if (!infoRes.ok) return failRedirect('profile_fetch_failed');
     const d = await infoRes.json();
