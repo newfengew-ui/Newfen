@@ -1,22 +1,13 @@
-# Безопасный деплой Fox AI v7.0 на Vercel
+# Деплой Fox AI v9.0 на Vercel
 
-## 1. Обновите настройки в Яндекс ID (oauth.yandex.ru)
-1. Откройте ваше приложение **Fox AI** -> **Редактировать**.
-2. В поле **Redirect URI** добавьте:
-   `https://foxai-sepia.vercel.app/api/auth/callback`
-3. Нажмите **Сгенерировать новый Client secret** (поскольку старый секрет был отправлен в чат) и скопируйте новый секрет.
+## Что нового в структуре
+- `index.html` (~60 КБ) — чистая разметка без inline-скриптов (строгий CSP `script-src 'self' https://cdn.jsdelivr.net` без `'unsafe-inline'`).
+- `styles.css` — все стили и темы.
+- `app.js` — вся клиентская логика.
+- `api/sync.js` — облачная синхронизация чатов между устройствами.
+- `api/_lib/security.js` — единый серверный rate limiter и серверный отзыв сессий при выходе (7-дневные `HttpOnly` сессии).
 
-## 2. Добавьте переменные окружения в Vercel
-Откройте проект на Vercel -> **Settings** -> **Environment Variables** и добавьте:
-
-| Переменная | Что вписать |
-| :--- | :--- |
-| `YANDEX_CLIENT_ID` | `37f22e14615d4365b65355b6bd692259` |
-| `YANDEX_CLIENT_SECRET` | Новый `Client secret` из Яндекс ID |
-| `SESSION_SECRET` | Случайная длинная строка (32+ символов, например пароль из генератора) |
-| `ALLOWED_ORIGIN` | `https://foxai-sepia.vercel.app` |
-| `PRIMARY_API_KEY` | Ваш основной API-ключ ИИ |
-| `BACKUP_API_KEY` | Ваш резервный API-ключ ИИ |
-
-## 3. Загрузите файлы на Vercel
-Загрузите все файлы из архива `Fox_AI_v7_Vercel.zip` в корень репозитория/проекта (сохраняя папку `api/`, `vercel.json`, `index.html`, `sw.js`) и сделайте **Redeploy**.
+## Новые опциональные переменные в Vercel (для Redis: единые лимиты + отзыв сессий + облачная синхронизация)
+1. Создайте бесплатную базу на https://upstash.com (Redis).
+2. Скопируйте `UPSTASH_REDIS_REST_URL` и `UPSTASH_REDIS_REST_TOKEN` и добавьте их в Vercel -> **Settings -> Environment Variables** (тип: Секрет).
+3. Если Redis пока не подключать — сайт всё равно полностью работает (на локальном хранении и in-memory лимитах).
