@@ -20,14 +20,6 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<canvas id="snowCanvas" aria-hidden="true"></canvas>
-<div class="ny-garland" aria-hidden="true">
-  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
-  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
-  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
-  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
-</div>
-
 <div class="sel-ask-pop" id="selAskPop" role="toolbar" aria-label="Действия с выделенным текстом"><button class="sel-ask-btn primary" id="btnSelAsk">Уточнить</button><button class="sel-ask-btn" id="btnSelSimple">Объяснить проще</button></div>
 <div class="drop-overlay" id="dropOverlay"><div class="drop-overlay-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div style="font-size:15px;font-weight:600;">Отпустите файлы</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Фото, видео, PDF, DOCX, XLSX, CSV и код</div></div></div>
 
@@ -76,11 +68,7 @@
       </button>
 
       <button class="brand-pill" id="btnHeaderTitle" aria-label="Открыть настройки Fox AI">
-        <svg class="brand-logo-sm" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linejoin="round">
-          <polygon points="22,52 24,18 50,38 70,38 96,18 98,52 84,82 60,100 36,82"/>
-          <circle cx="44" cy="60" r="4.5" fill="currentColor" stroke="none"/>
-          <circle cx="76" cy="60" r="4.5" fill="currentColor" stroke="none"/>
-        </svg>
+        <img class="topbar-brand-avatar" src="/fox-avatar.webp" alt="Fox AI">
         <span class="brand-title" id="headerTitle">Fox AI</span>
         <span class="incognito-pill" id="incognitoPill">Инкогнито</span>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="opacity:0.55;"><polyline points="6 9 12 15 18 9"/></svg>
@@ -409,7 +397,7 @@
             <button class="code-btn" id="btnManualFullscreen" style="height:34px;padding:0 12px;">Переключить</button>
           </div>
           <div class="settings-row" data-skeys="новый год зима снег гирлянда праздник">
-            <div><div class="settings-row-label">Новогодний режим</div><div class="settings-row-sub">Снег, гирлянда, зимняя лиса и таймер</div></div>
+            <div><div class="settings-row-label">Новогодний режим</div><div class="settings-row-sub">Новогодняя тема, таймер до Нового года и зимний стиль</div></div>
             <button class="switch on" id="swWinterMode" role="switch" aria-checked="true" aria-label="Новогодний режим"></button>
           </div>
           <div class="settings-row" data-skeys="enter отправка клавиша">

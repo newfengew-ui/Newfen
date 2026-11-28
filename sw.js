@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fox-ai-v11-cache';
+const CACHE_NAME = 'fox-ai-v11-1-cache';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(
