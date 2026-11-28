@@ -15,23 +15,25 @@
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="icon" type="image/webp" href="/fox-avatar.webp">
+<link rel="apple-touch-icon" href="/fox-icon-512.png">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+<canvas id="snowCanvas" aria-hidden="true"></canvas>
+<div class="ny-garland" aria-hidden="true">
+  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
+  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
+  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
+  <span class="ny-bulb warm"></span><span class="ny-bulb ice"></span><span class="ny-bulb snow"></span>
+</div>
+
 <div class="sel-ask-pop" id="selAskPop" role="toolbar" aria-label="Действия с выделенным текстом"><button class="sel-ask-btn primary" id="btnSelAsk">Уточнить</button><button class="sel-ask-btn" id="btnSelSimple">Объяснить проще</button></div>
 <div class="drop-overlay" id="dropOverlay"><div class="drop-overlay-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div style="font-size:15px;font-weight:600;">Отпустите файлы</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">Фото, видео, PDF, DOCX, XLSX, CSV и код</div></div></div>
 
 <!-- ==================== SPLASH SCREEN (REAL INIT) ==================== -->
 <div id="splash" role="status" aria-label="Загрузка Fox AI">
-  <svg class="splash-fox" viewBox="0 0 120 120" width="96" height="96" aria-hidden="true">
-    <polygon points="22,52 24,16 50,36"/>
-    <polygon points="98,52 96,16 70,36"/>
-    <polygon points="22,52 50,36 70,36 98,52 84,82 60,100 36,82"/>
-    <polyline points="22,52 46,72 60,100 74,72 98,52"/>
-    <circle cx="44" cy="60" r="3.4" fill="#fff" stroke="none"/>
-    <circle cx="76" cy="60" r="3.4" fill="#fff" stroke="none"/>
-    <polygon points="55,91 65,91 60,99" fill="#fff" stroke="none"/>
-  </svg>
+  <img class="splash-avatar-img" src="/fox-avatar.webp" alt="Fox AI">
   <div class="splash-title">Fox AI</div>
   <div class="splash-status" id="splashStatus">Инициализация хранилища…</div>
 </div>
@@ -39,15 +41,7 @@
 <!-- ==================== YANDEX ID AUTH GATE (v6.2) ==================== -->
 <div id="authGate" class="hidden" role="dialog" aria-modal="true" aria-labelledby="authGateTitle">
   <div class="auth-card">
-    <svg class="auth-fox-svg" viewBox="0 0 120 120" aria-hidden="true">
-      <polygon points="22,52 24,16 50,36"/>
-      <polygon points="98,52 96,16 70,36"/>
-      <polygon points="22,52 50,36 70,36 98,52 84,82 60,100 36,82"/>
-      <polyline points="22,52 46,72 60,100 74,72 98,52"/>
-      <circle class="fox-dot" cx="44" cy="60" r="3.4"/>
-      <circle class="fox-dot" cx="76" cy="60" r="3.4"/>
-      <polygon class="fox-dot" points="55,91 65,91 60,99"/>
-    </svg>
+    <img class="auth-avatar-img" src="/fox-avatar.webp" alt="Fox AI">
     <h1 class="auth-title" id="authGateTitle">Fox AI</h1>
     <p class="auth-sub">Войдите через Яндекс ID, чтобы открыть главное меню и продолжить работу</p>
     <button type="button" class="btn-yandex-id" id="btnYandexLogin">
@@ -202,11 +196,7 @@
 <aside class="drawer" id="drawer" aria-label="История чатов">
   <div class="drawer-brand-row">
     <div class="drawer-brand">
-      <svg width="20" height="20" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linejoin="round">
-        <polygon points="22,52 24,18 50,38 70,38 96,18 98,52 84,82 60,100 36,82"/>
-        <circle cx="44" cy="60" r="4.5" fill="currentColor" stroke="none"/>
-        <circle cx="76" cy="60" r="4.5" fill="currentColor" stroke="none"/>
-      </svg>
+      <img class="drawer-brand-avatar" src="/fox-avatar.webp" alt="Fox AI">
       <span>Fox AI</span>
     </div>
     <button class="icon-btn" id="btnThemeToggle" aria-label="Переключить тему оформления" title="Переключить тему" style="width:36px;height:36px;min-width:36px;min-height:36px;">
@@ -382,6 +372,7 @@
               <button class="seg-btn" data-set-theme="nightpaper">Ночь-бум.</button>
               <button class="seg-btn" data-set-theme="light">Светлая</button>
               <button class="seg-btn" data-set-theme="paper">Бумага</button>
+              <button class="seg-btn" data-set-theme="winter">Зима</button>
             </div>
           </div>
           <div class="settings-row col" data-skeys="акцент цвет моно янтарь синий изумруд">
@@ -416,6 +407,10 @@
           <div class="settings-row" data-skeys="полноэкранный режим fullscreen">
             <div><div class="settings-row-label">Полноэкранный режим</div><div class="settings-row-sub">Только ручное переключение</div></div>
             <button class="code-btn" id="btnManualFullscreen" style="height:34px;padding:0 12px;">Переключить</button>
+          </div>
+          <div class="settings-row" data-skeys="новый год зима снег гирлянда праздник">
+            <div><div class="settings-row-label">Новогодний режим</div><div class="settings-row-sub">Снег, гирлянда, зимняя лиса и таймер</div></div>
+            <button class="switch on" id="swWinterMode" role="switch" aria-checked="true" aria-label="Новогодний режим"></button>
           </div>
           <div class="settings-row" data-skeys="enter отправка клавиша">
             <div><div class="settings-row-label">Enter для отправки</div><div class="settings-row-sub">Shift+Enter — новая строка</div></div>

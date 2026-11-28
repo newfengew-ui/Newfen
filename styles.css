@@ -1493,3 +1493,197 @@ mark.search-hit.current { outline: 2px solid var(--text); outline-offset: 1px; }
 }
 .dt-block-title { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
 .dt-block-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+/* ==================== FOX AI v11.0 NEW YEAR & PREMIUM VISUALS ==================== */
+
+/* 4. Winter Frost Theme */
+[data-theme="winter"] {
+  --bg: #050a14; --surface: #0b1426; --surface-2: #12203a; --surface-3: #1b2f52;
+  --border: rgba(148, 197, 255, 0.16); --border-strong: rgba(186, 222, 255, 0.3);
+  --text: #eef6ff; --text-muted: #9db8db; --text-dim: #6683ab;
+  --accent: #7dd3fc; --accent-fg: #041322; --accent-glow: rgba(125, 211, 252, 0.32);
+  --user-bg: rgba(20, 38, 68, 0.72); --user-border: rgba(148, 197, 255, 0.24);
+  --code-bg: #081020; --code-header: #0f1b33;
+  --diff-add-bg: rgba(56, 189, 248, 0.14); --diff-del-bg: rgba(248, 113, 113, 0.12);
+  --overlay: rgba(3, 7, 16, 0.72); --glass: rgba(8, 16, 32, 0.78);
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+
+/* Custom Fox AI Avatar Styling */
+.fox-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
+}
+.msg-avatar {
+  overflow: hidden; padding: 0 !important; border: 1px solid var(--border-strong); background: #000;
+}
+.topbar-brand-avatar {
+  width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--border-strong); flex-shrink: 0; background: #000;
+}
+.drawer-brand-avatar {
+  width: 26px; height: 26px; border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--border-strong); flex-shrink: 0; background: #000;
+}
+.splash-avatar-img {
+  width: 96px; height: 96px; border-radius: 26px; object-fit: cover;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px var(--border-strong);
+  margin-bottom: 14px;
+}
+.auth-avatar-img {
+  width: 84px; height: 84px; border-radius: 24px; object-fit: cover;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 0 1px var(--border-strong);
+  margin-bottom: 14px;
+}
+
+/* 1. Canvas Snowfall Overlay */
+#snowCanvas {
+  position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  opacity: 0; transition: opacity 0.45s ease;
+}
+body.winter-mode #snowCanvas { opacity: 1; }
+
+/* 3. Subtle Aesthetic Garland under Topbar (Winter Mode) */
+.ny-garland {
+  position: fixed; top: calc(52px + var(--safe-top)); left: 0; right: 0; height: 14px;
+  z-index: 22; pointer-events: none; display: none; justify-content: space-around; align-items: flex-start;
+  overflow: hidden; padding: 0 10px;
+  transition: transform 0.28s ease, opacity 0.25s ease;
+}
+body.winter-mode .ny-garland { display: flex; }
+body.topbar-hidden .ny-garland, body.zen-mode .ny-garland { transform: translateY(-24px); opacity: 0; }
+.ny-garland::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+}
+.ny-bulb {
+  width: 5px; height: 5px; border-radius: 50%; margin-top: 3px;
+  animation: nyTwinkle 2.6s ease-in-out infinite;
+}
+.ny-bulb.warm { background: #fbbf24; box-shadow: 0 0 8px 1px rgba(251, 191, 36, 0.7); }
+.ny-bulb.ice { background: #7dd3fc; box-shadow: 0 0 8px 1px rgba(125, 211, 252, 0.7); animation-delay: 0.9s; }
+.ny-bulb.snow { background: #ffffff; box-shadow: 0 0 7px 1px rgba(255, 255, 255, 0.65); animation-delay: 1.7s; }
+@keyframes nyTwinkle { 0%, 100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.2); } }
+
+/* 2. Santa Hat Badge on Welcome 2D Fox (Winter Mode) */
+.fox-santa-hat {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%) rotate(-8deg);
+  width: 24px; height: 18px; pointer-events: none; display: none; z-index: 5;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+}
+body.winter-mode .fox-santa-hat { display: block; }
+
+/* 5. New Year Countdown Pill */
+.ny-countdown-pill {
+  display: none; align-items: center; gap: 6px; margin-top: 8px;
+  padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border-strong);
+  background: var(--glass); backdrop-filter: blur(12px);
+  font-size: 11.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums;
+}
+body.winter-mode .ny-countdown-pill { display: inline-flex; }
+
+/* 7. Frosted Glass UI (always tasteful, zero extra toggles) */
+.topbar {
+  background: var(--glass) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+}
+.composer-box {
+  background: var(--glass) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+.drawer {
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+}
+
+/* 12. Auto-hide Topbar on scroll down */
+body.topbar-hidden .topbar {
+  transform: translateY(-105%); opacity: 0; pointer-events: none;
+}
+
+/* 8. Spring Message Entrance & Morph Send Button Progress Ring */
+@keyframes foxMsgSpring {
+  0% { opacity: 0; transform: translateY(10px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-wrapper { animation: foxMsgSpring 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+.send-btn { position: relative; transition: transform 0.16s ease, border-radius 0.2s ease, background 0.2s ease; }
+body.is-streaming .send-btn {
+  border-radius: 11px;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent);
+}
+
+/* 9. Shimmer Skeleton & Thinking Timer */
+@keyframes foxShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-line {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%) !important;
+  background-size: 200% 100% !important;
+  animation: foxShimmer 1.4s ease-in-out infinite !important;
+}
+.gen-timer-badge {
+  font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; margin-left: 6px;
+}
+
+/* 10. Micro-particles burst container */
+.fox-spark {
+  position: fixed; width: 6px; height: 6px; border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.65s ease;
+}
+
+/* 11. Subtle Automatic Theme-Matched Chat Background Patterns */
+[data-theme="paper"] .chat-scroll {
+  background-image: linear-gradient(to bottom, transparent 31px, rgba(28, 25, 23, 0.045) 32px);
+  background-size: 100% 32px;
+}
+[data-theme="graphite"] .chat-scroll {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+[data-theme="winter"] .chat-scroll {
+  background-image: radial-gradient(rgba(186, 222, 255, 0.08) 1px, transparent 1px), radial-gradient(rgba(251, 191, 36, 0.05) 1px, transparent 1px);
+  background-size: 36px 36px, 64px 64px;
+  background-position: 0 0, 18px 24px;
+}
+
+/* 14. Glass Welcome Prompt Cards */
+.welcome-cards-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  width: 100%; max-width: 440px; margin-top: 18px;
+}
+.welcome-glass-card {
+  text-align: left; padding: 12px 13px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--glass);
+  backdrop-filter: blur(12px); color: var(--text); cursor: pointer;
+  display: flex; flex-direction: column; gap: 5px;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.welcome-glass-card:active, .welcome-glass-card:hover {
+  transform: translateY(-2px); border-color: var(--border-strong); background: var(--surface-2);
+}
+.wgc-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.wgc-sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+
+/* 15. Mini Response Stats */
+.msg-stats-line {
+  font-size: 10.5px; color: var(--text-dim); margin-top: 4px; padding-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 16. Stylish Streaming Cursor (Pulse Dot / Snowflake in Winter Mode) */
+.stream-cursor {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); margin-left: 4px; vertical-align: middle;
+  animation: foxCursorPulse 0.9s ease-in-out infinite;
+}
+body.winter-mode .stream-cursor {
+  width: auto; height: auto; background: none; border-radius: 0;
+  color: var(--accent); font-size: 13px; line-height: 1;
+}
+body.winter-mode .stream-cursor::after { content: '❄'; }
+@keyframes foxCursorPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }

@@ -61,7 +61,7 @@
     font: 'md', fontFamily: 'sans', radius: 'normal', density: 'normal',
     userName: 'Пользователь', tone: 'balanced', customPrompt: '',
     showFollowups: true, showThink: true, codeLines: true, videoFrames: 4,
-    autoMemory: true, haptic: true, autoTts: false, ttsRate: 1, enterToSend: false, foxCompanion: true, accent: 'mono'
+    autoMemory: true, haptic: true, autoTts: false, ttsRate: 1, enterToSend: false, foxCompanion: true, accent: 'mono', winterMode: true
   };
 
   // Системный промпт и правила Fox AI хранятся и применяются строго на сервере (/api/chat).
@@ -112,7 +112,7 @@
     if (['balanced', 'concise', 'detailed', 'coder', 'tech'].includes(raw.tone)) out.tone = raw.tone;
     if (['mono', 'fox', 'ice', 'emerald'].includes(raw.accent)) out.accent = raw.accent;
     if (typeof raw.customPrompt === 'string') out.customPrompt = raw.customPrompt.slice(0, 3000);
-    ['showFollowups', 'showThink', 'codeLines', 'autoMemory', 'haptic', 'autoTts', 'enterToSend', 'foxCompanion'].forEach(k => {
+    ['showFollowups', 'showThink', 'codeLines', 'autoMemory', 'haptic', 'autoTts', 'enterToSend', 'foxCompanion', 'winterMode'].forEach(k => {
       if (typeof raw[k] === 'boolean') out[k] = raw[k];
     });
     if (Number.isFinite(Number(raw.videoFrames))) out.videoFrames = Math.max(2, Math.min(8, Math.round(Number(raw.videoFrames))));
@@ -500,9 +500,9 @@
 
   /* ==================== THEME & 8-CATEGORY SETTINGS ==================== */
   function applyTheme(theme) {
-    state.theme = ['dark', 'graphite', 'terminal', 'nightpaper', 'light', 'paper'].includes(theme) ? theme : 'dark';
+    state.theme = ['dark', 'graphite', 'terminal', 'nightpaper', 'light', 'paper', 'winter'].includes(theme) ? theme : 'dark';
     document.documentElement.setAttribute('data-theme', state.theme);
-    const colors = { dark: '#000000', graphite: '#121316', terminal: '#050806', nightpaper: '#181512', light: '#ffffff', paper: '#f5f0e6' };
+    const colors = { dark: '#000000', graphite: '#121316', terminal: '#050806', nightpaper: '#181512', light: '#ffffff', paper: '#f5f0e6', winter: '#050a14' };
     const meta = $('metaThemeColor'); if (meta) meta.setAttribute('content', colors[state.theme]);
     lsSet(LS_KEYS.THEME, state.theme);
     $('themeIcon').innerHTML = state.theme === 'dark'
@@ -1631,7 +1631,7 @@
         <div class="welcome">
           <div class="fox-stage" id="foxMascotStage" aria-label="Интерактивная 2D-лиса Fox AI">
             <div class="fox-shadow" id="foxShadow"></div>
-            <div class="fox-actor" id="foxActor" role="button" tabindex="0" aria-label="Погладить лису Fox AI" title="Нажмите на лису или на любую букву">
+            <div class="fox-actor" id="foxActor" role="button" tabindex="0" aria-label="Погладить лису Fox AI" title="Нажмите на лису или на любую букву"><svg class="fox-santa-hat" viewBox="0 0 32 24" aria-hidden="true"><path d="M4 18 C7 6, 19 3, 27 11 L24 14 C19 9, 11 11, 9 18 Z" fill="#dc2626"/><rect x="3" y="16" width="22" height="5" rx="2.5" fill="#ffffff"/><circle cx="27" cy="12" r="3" fill="#ffffff"/></svg>
               <div class="fox-sprite-wrap" id="foxSpriteWrap">
                 <img class="fox-sprite-img active" id="foxImg_walk1" src="data:image/webp;base64,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" alt="" draggable="false">
                 <img class="fox-sprite-img" id="foxImg_walk2" src="data:image/webp;base64,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" alt="" draggable="false">
@@ -1654,6 +1654,13 @@
             </div>
           </div>
           <p class="welcome-sub">${state.incognito ? 'Режим Инкогнито · Чем помочь?' : 'Чем помочь?'}</p>
+          <div class="ny-countdown-pill" id="nyCountdownPill"><span id="nyCountdownText">${getNewYearCountdownText()}</span></div>
+          <div class="welcome-cards-grid" id="welcomeGlassCards">
+            <button type="button" class="welcome-glass-card" data-quick-prompt="Придумай 7 оригинальных и небанальных идей подарков на Новый год"><span class="wgc-title">Идеи подарков</span><span class="wgc-sub">Подборка на Новый год</span></button>
+            <button type="button" class="welcome-glass-card" data-quick-prompt="Помоги подвести личные итоги года и составить план на следующий год по шагам"><span class="wgc-title">Итоги и план года</span><span class="wgc-sub">Пошаговый разбор</span></button>
+            <button type="button" class="welcome-glass-card" data-quick-prompt="Напиши красивый интерактивный мини-сайт с новогодним таймером и снегом в одном HTML"><span class="wgc-title">Собрать сайт в IDE</span><span class="wgc-sub">HTML + CSS + JS сразу в превью</span></button>
+            <button type="button" class="welcome-glass-card" data-quick-prompt="Объясни сложную тему простыми словами с примерами и мини-тестом"><span class="wgc-title">Разобрать тему</span><span class="wgc-sub">Объяснение + квиз</span></button>
+          </div>
         <div class="fox-mood-pill" id="foxMoodPill"><span class="fox-mood-dot"></span><span id="foxMoodText">Лиса готова к работе</span></div>
           <div class="quick-grid">
             <button class="quick-card" data-quick="Построй визуализацию (блок chart JSON) и KPI-карточки (блок kpi JSON) по трендам технологий 2026"><div class="quick-card-head">${ICONS.chart}<span class="quick-card-title">График и KPI</span></div></button>
@@ -1810,9 +1817,16 @@
       ? '<div class="followup-chips">' + FOLLOWUP_PRESETS.map(p => `<button class="followup-chip" data-followup="${escapeHtml(p)}">${escapeHtml(p)}</button>`).join('') + '</div>' : '';
 
     const statusBadge = !isUser && v.statusText ? `<span class="status-badge">${escapeHtml(v.statusText)}</span>` : '';
-    const headerHtml = isUser ? '' : `<div class="msg-header"><span class="msg-avatar"><svg width="13" height="13" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"><polygon points="22,52 24,18 50,38 70,38 96,18 98,52 84,82 60,100 36,82"/></svg></span><span>Fox AI</span>${statusBadge}</div>`;
+    const headerHtml = isUser ? '' : `<div class="msg-header"><span class="msg-avatar"><img class="fox-avatar-img" src="/fox-avatar.webp" alt="Fox AI"></span><span>Fox AI</span>${statusBadge}</div>`;
 
-    return `<div class="msg-wrapper ${msg.role}" data-msg-id="${mid}"><div class="swipe-reply-indicator">${ICONS.quote}</div><div class="msg-inner">${headerHtml}<div class="msg-bubble">${quoteHtml}${attHtml}${thinkHtml}${bodyContent}</div>${actionsHtml}${followupHtml}</div></div>`;
+    const statsHtml = (!isUser && !isStreamingThis && !v.isError && parsed.visible)
+      ? (() => {
+          const words = parsed.visible.trim().split(/\s+/).filter(Boolean).length;
+          const secStr = v.genMs ? ((v.genMs / 1000).toFixed(1) + ' с · ') : '';
+          return `<div class="msg-stats-line">${secStr}${words} сл.</div>`;
+        })()
+      : '';
+    return `<div class="msg-wrapper ${msg.role}" data-msg-id="${mid}"><div class="swipe-reply-indicator">${ICONS.quote}</div><div class="msg-inner">${headerHtml}<div class="msg-bubble">${quoteHtml}${attHtml}${thinkHtml}${bodyContent}</div>${statsHtml}${actionsHtml}${followupHtml}</div></div>`;
   }
 
   function renderAttachments() {
@@ -1960,6 +1974,8 @@
 
     const ver = getMsgVersion(assistantMsg);
     ver.isError = false;
+    const genStartTs = performance.now();
+    playUiSound('send');
     let shownVisibleLen = isContinue ? parseThinkText(ver.text, ver.think).visible.length : 0;
     let streamDone = false, rafId = null;
 
@@ -1968,10 +1984,10 @@
       const parsed = parseThinkText(ver.text, ver.think);
       const statusEl = $('liveGenStatusText'), compStatus = $('composerStatusText');
       if (parsed.visible) {
-        if (statusEl) statusEl.textContent = 'Генерация ответа…';
+        if (statusEl) statusEl.textContent = 'Генерация ответа · ' + ((performance.now() - genStartTs) / 1000).toFixed(1) + ' с';
         if (compStatus) compStatus.textContent = 'Генерация ответа…';
       } else if (parsed.think) {
-        if (statusEl) statusEl.textContent = 'Обработка запроса…';
+        if (statusEl) statusEl.textContent = 'Думает · ' + ((performance.now() - genStartTs) / 1000).toFixed(1) + ' с';
         if (compStatus) compStatus.textContent = 'Обработка запроса…';
       }
       if (state.settings.showThink && parsed.think) {
@@ -2026,7 +2042,9 @@
         }
         break;
       }
+      ver.genMs = Math.round(performance.now() - genStartTs);
       ver.statusText = hasUnclosedCodeFence(parseThinkText(ver.text, ver.think).visible) ? 'Не завершён — нажмите «Продолжить»' : 'Ответ готов';
+      playUiSound('done');
     } catch (err) {
       if (err && err.name === 'AbortError') {
         ver.statusText = 'Генерация остановлена';
@@ -4444,7 +4462,15 @@
 
     ctx.fillStyle = textCol;
     ctx.font = '700 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('Fox AI', pad + 48, pad + 78);
+    const isWin = document.body.classList.contains('winter-mode');
+    if (isWin) {
+      ctx.strokeStyle = 'rgba(125,211,252,0.45)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.roundRect(pad + 10, pad + 10, cardW - 20, H - pad * 2 - 20, 26); ctx.stroke();
+      ctx.fillStyle = 'rgba(251,191,36,0.75)';
+      for (let sx = pad + 60; sx < W - pad - 40; sx += 90) { ctx.beginPath(); ctx.arc(sx, pad + 26, 3.5, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.fillStyle = textCol;
+    ctx.fillText(isWin ? 'Fox AI · Winter Edition' : 'Fox AI', pad + 48, pad + 78);
     ctx.fillStyle = mutedCol;
     ctx.font = '500 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(new Date().toLocaleDateString('ru-RU'), W - pad - 170, pad + 76);
@@ -4794,6 +4820,183 @@
     }
   }
 
+
+  /* ==================== FOX AI v11.0 NEW YEAR & VISUAL ENGINE ==================== */
+  // 13. Subtle Web Audio UI Sounds (zero external MP3s, soft & unobtrusive)
+  let _audioCtx = null;
+  function playUiSound(kind) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!_audioCtx) _audioCtx = new AC();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+      const now = _audioCtx.currentTime;
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      if (kind === 'send') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(520, now); osc.frequency.exponentialRampToValueAtTime(760, now + 0.06);
+        gain.gain.setValueAtTime(0.03, now); gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.07);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if (kind === 'done') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(660, now); osc.frequency.setValueAtTime(880, now + 0.07);
+        gain.gain.setValueAtTime(0.025, now); gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.22);
+        osc.start(now); osc.stop(now + 0.23);
+      } else if (kind === 'spark') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(980, now); osc.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
+        gain.gain.setValueAtTime(0.02, now); gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.09);
+        osc.start(now); osc.stop(now + 0.1);
+      }
+    } catch {}
+  }
+
+  // 10. Micro-particles burst (bookmarks, code copy, fox pet, quiz win, New Year fireworks)
+  function spawnSparkBurst(x, y, count = 12, winterColors = false) {
+    const cx = Number.isFinite(x) ? x : window.innerWidth / 2;
+    const cy = Number.isFinite(y) ? y : window.innerHeight / 2;
+    const palette = winterColors
+      ? ['#fbbf24', '#7dd3fc', '#ffffff', '#f59e0b']
+      : ['var(--accent)', 'var(--text)', 'var(--text-muted)'];
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('span');
+      dot.className = 'fox-spark';
+      dot.style.left = cx + 'px';
+      dot.style.top = cy + 'px';
+      dot.style.background = palette[i % palette.length];
+      document.body.appendChild(dot);
+      const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+      const dist = 26 + Math.random() * 42;
+      requestAnimationFrame(() => {
+        dot.style.transform = `translate(${Math.round(Math.cos(ang) * dist)}px, ${Math.round(Math.sin(ang) * dist)}px) scale(0.2)`;
+        dot.style.opacity = '0';
+      });
+      setTimeout(() => dot.remove(), 700);
+    }
+  }
+
+  // 1. Lightweight Parallax Canvas Snowfall (auto-pauses when tab hidden or winterMode off)
+  let _snowRaf = null;
+  function syncWinterMode() {
+    const on = state.settings.winterMode !== false;
+    document.body.classList.toggle('winter-mode', on);
+    const sw = $('swWinterMode');
+    if (sw) { sw.classList.toggle('on', on); sw.setAttribute('aria-checked', String(on)); }
+    const canvas = $('snowCanvas');
+    if (!canvas) return;
+    if (!on) {
+      if (_snowRaf) { cancelAnimationFrame(_snowRaf); _snowRaf = null; }
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    if (_snowRaf) return;
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width = window.innerWidth, H = canvas.height = window.innerHeight;
+    const resize = () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; };
+    window.addEventListener('resize', resize, { passive: true });
+    const count = Math.min(48, Math.max(24, Math.floor(W / 14)));
+    const flakes = Array.from({ length: count }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: 0.9 + Math.random() * 2.1,
+      vy: 0.35 + Math.random() * 0.85,
+      vx: (Math.random() - 0.5) * 0.45,
+      a: 0.18 + Math.random() * 0.45
+    }));
+    const tick = () => {
+      if (!document.body.classList.contains('winter-mode')) { _snowRaf = null; return; }
+      if (document.visibilityState === 'visible') {
+        ctx.clearRect(0, 0, W, H);
+        const isLight = state.theme === 'light' || state.theme === 'paper';
+        for (const f of flakes) {
+          f.y += f.vy; f.x += f.vx + Math.sin(f.y * 0.015) * 0.25;
+          if (f.y > H + 6) { f.y = -6; f.x = Math.random() * W; }
+          if (f.x > W + 6) f.x = -6; else if (f.x < -6) f.x = W + 6;
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fillStyle = isLight ? `rgba(100,130,170,${f.a * 0.65})` : `rgba(226,240,255,${f.a})`;
+          ctx.fill();
+        }
+      }
+      _snowRaf = requestAnimationFrame(tick);
+    };
+    _snowRaf = requestAnimationFrame(tick);
+  }
+
+  // 5. New Year Countdown & NYE Firework Burst
+  function getNewYearCountdownText() {
+    const now = new Date();
+    const targetYear = (now.getMonth() === 0 && now.getDate() <= 2) ? now.getFullYear() : (now.getFullYear() + 1);
+    const target = new Date(targetYear, 0, 1, 0, 0, 0);
+    const diff = target - now;
+    if (diff <= 0) return `С Новым ${now.getFullYear()} годом!`;
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `До Нового года: ${d} дн. ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  function initNewYearCountdown() {
+    const update = () => {
+      const el = $('nyCountdownText');
+      if (el) el.textContent = getNewYearCountdownText();
+    };
+    update();
+    setInterval(update, 30000);
+    // Celebratory subtle burst on Dec 31 / Jan 1
+    const now = new Date();
+    if ((now.getMonth() === 11 && now.getDate() === 31) || (now.getMonth() === 0 && now.getDate() === 1)) {
+      setTimeout(() => spawnSparkBurst(window.innerWidth * 0.5, window.innerHeight * 0.3, 22, true), 900);
+    }
+  }
+
+  function bindV11VisualEvents() {
+    // Only 1 toggle: Winter Mode
+    const swWin = $('swWinterMode');
+    if (swWin) {
+      swWin.addEventListener('click', () => {
+        state.settings.winterMode = !(state.settings.winterMode !== false);
+        applySettings();
+        syncWinterMode();
+      });
+    }
+
+    // 14 & 2. Delegated Welcome Glass Prompt Cards + Fox Sparkles
+    if (elChatContainer) {
+      elChatContainer.addEventListener('click', e => {
+        const card = e.target.closest('[data-quick-prompt]');
+        if (card) {
+          elComposer.value = card.dataset.quickPrompt;
+          autoResizeComposer(); setSendButtonState();
+          elComposer.focus();
+          return;
+        }
+        if (e.target.closest('#foxActor')) {
+          spawnSparkBurst(e.clientX, e.clientY, 14, document.body.classList.contains('winter-mode'));
+          playUiSound('spark');
+        }
+      });
+    }
+    document.addEventListener('click', e => {
+      if (e.target.closest('[data-copy-code], [data-ctx="bm"]')) {
+        spawnSparkBurst(e.clientX, e.clientY, 10, document.body.classList.contains('winter-mode'));
+        playUiSound('spark');
+      }
+    });
+
+    // 12. Auto-hide Topbar on scroll down, reveal on scroll up
+    let lastScrollTop = 0;
+    if (elChatScroll) {
+      elChatScroll.addEventListener('scroll', () => {
+        const st = elChatScroll.scrollTop;
+        if (st > 90 && st > lastScrollTop + 14) document.body.classList.add('topbar-hidden');
+        else if (st < lastScrollTop - 10 || st <= 40) document.body.classList.remove('topbar-hidden');
+        lastScrollTop = st;
+      }, { passive: true });
+    }
+
+    syncWinterMode();
+    initNewYearCountdown();
+  }
+
   /* ==================== REAL ASYNC INIT (ZERO ARTIFICIAL DELAY, SECTION 7.4) ==================== */
   async function bootstrap() {
     applyTheme(state.theme);
@@ -4803,6 +5006,7 @@
     bindEvents();
     bindV8VisualEvents();
     bindCloudSyncEvents();
+    bindV11VisualEvents();
     renderAll();
     updateFoxMood();
     updateDeckBadge();
